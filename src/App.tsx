@@ -27,7 +27,11 @@ function App() {
       <div className="flex-1 overflow-y-auto bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 py-6">
           {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+            <ChatMessage
+              key={message.id}
+              message={message}
+              onOptionClick={handleUserInput}
+            />
           ))}
           <div ref={messagesEndRef} />
         </div>
@@ -36,7 +40,7 @@ function App() {
       <ChatInput
         onSend={handleUserInput}
         disabled={isProcessing}
-        placeholder={isProcessing ? 'Processing...' : 'Type your answer...'}
+        placeholder={isProcessing ? 'Processing...' : 'Type your answer or click an option above...'}
       />
     </div>
   );

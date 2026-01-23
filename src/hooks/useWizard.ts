@@ -339,7 +339,25 @@ export function useWizard() {
     await submitToAPI(finalState);
   };
 
-  const submitToAPI = async (finalState: WizardState) => {
+  const validatePayload = (payload: any): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (!payload.user_type) errors.push('user_type is required');
+    if (!payload.category) errors.push('category is required');
+    if (!payload.material_name) errors.push('material_name is required');
+    if (!payload.mass || payload.mass <= 0) errors.push('mass must be a positive number');
+    if (!payload.processing_goal) errors.push('processing_goal is required');
+    if (!payload.optimization_goal) errors.push('optimization_goal is required');
+    if (payload.moisture === undefined || payload.moisture === null) errors.push('moisture is required');
+    if (!payload.num_trials || payload.num_trials <= 0) errors.push('num_trials must be a positive number');
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
+  };
+
+  const submitToAPI = async (finalState: WizardState, retryCount = 0) => {
     const requestPayload = {
       user_type: finalState.user_type!,
       category: finalState.category!,
@@ -353,28 +371,68 @@ export function useWizard() {
       num_trials: finalState.num_trials!,
     };
 
+    const validation = validatePayload(requestPayload);
+    if (!validation.valid) {
+      addMessage(
+        'assistant',
+        `Validation Error:\n${validation.errors.join('\n')}`
+      );
+      setIsProcessing(false);
+      return;
+    }
+
+    const apiUrl = 'https://quantummorph-production.up.railway.app/optimize';
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    console.log('=== API REQUEST DEBUG ===');
+    console.log('URL:', apiUrl);
+    console.log('Method: POST');
+    console.log('Headers:', JSON.stringify(headers, null, 2));
+    console.log('Body:', JSON.stringify(requestPayload, null, 2));
+    console.log('========================');
+
     try {
-      const response = await fetch('https://quantummorph-production.up.railway.app/optimize', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(requestPayload),
       });
 
+      console.log('Response Status:', response.status);
+      console.log('Response Status Text:', response.statusText);
+
       if (!response.ok) {
-        throw new Error(`API returned status ${response.status}`);
+        const errorText = await response.text();
+        console.error('Response Error Body:', errorText);
+        throw new Error(`API returned status ${response.status}: ${response.statusText}`);
       }
 
       const result = await response.json();
+      console.log('Response Success:', result);
       displayResults(result);
-    } catch (error) {
-      addMessage(
-        'assistant',
-        `Error communicating with the API: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    } finally {
       setIsProcessing(false);
+    } catch (error) {
+      console.error('=== API REQUEST FAILED ===');
+      console.error('Error:', error);
+      console.error('=========================');
+
+      if (retryCount < 1) {
+        addMessage(
+          'assistant',
+          `Connection failed. Retrying... (Attempt ${retryCount + 2}/2)`
+        );
+        setTimeout(() => {
+          submitToAPI(finalState, retryCount + 1);
+        }, 2000);
+      } else {
+        addMessage(
+          'assistant',
+          `Server connection failed. Please check API availability.\n\nError Details:\n${error instanceof Error ? error.message : 'Unknown error'}\n\nRequest Details:\nURL: ${apiUrl}\nMethod: POST\nHeaders: ${JSON.stringify(headers)}\nBody: ${JSON.stringify(requestPayload, null, 2)}`
+        );
+        setIsProcessing(false);
+      }
     }
   };
 
