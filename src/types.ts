@@ -16,7 +16,7 @@ export interface WizardState {
   processing_goal?: 'raw_biochar' | 'activated_carbon' | 'composite_filter';
   optimization_goal?: 'max_co2' | 'balanced' | 'max_stability';
   activation?: {
-    method: 'chemical' | 'physical';
+    type: 'chemical' | 'physical';
     agent?: 'HCl' | 'KOH' | 'H3PO4';
     concentration?: number | 'auto';
   } | null;
@@ -34,7 +34,7 @@ export interface APIRequest {
   processing_goal: string;
   optimization_goal: string;
   activation: {
-    method: string;
+    type: string;
     agent?: string;
     concentration?: number | string;
   } | null;

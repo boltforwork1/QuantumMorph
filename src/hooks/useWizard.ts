@@ -235,7 +235,7 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, activation: { method } }));
+    setState((prev) => ({ ...prev, activation: { type: method } }));
 
     if (method === 'chemical') {
       setCurrentStep('activation_agent');
