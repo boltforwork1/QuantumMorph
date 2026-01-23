@@ -381,7 +381,7 @@ export function useWizard() {
       return;
     }
 
-    const apiUrl = 'https://quantummorph-production.up.railway.app/optimize';
+    const apiUrl = 'http://127.0.0.1:8000/optimize';
     const headers = {
       'Content-Type': 'application/json',
     };
