@@ -357,7 +357,7 @@ export function useWizard() {
     };
   };
 
-  const submitToAPI = async (finalState: WizardState, retryCount = 0) => {
+  const submitToAPI = async (finalState: WizardState) => {
     const requestPayload = {
       user_type: finalState.user_type!,
       category: finalState.category!,
@@ -393,46 +393,83 @@ export function useWizard() {
     console.log('Body:', JSON.stringify(requestPayload, null, 2));
     console.log('========================');
 
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestPayload),
-      });
+    const attemptFetch = async (timeoutMs: number): Promise<Response | null> => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      console.log('Response Status:', response.status);
-      console.log('Response Status Text:', response.statusText);
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          return null;
+        }
+        throw error;
+      }
+    };
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Response Error Body:', errorText);
-        throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+    const pollForResponse = async (maxAttempts = 20): Promise<void> => {
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        console.log(`Polling attempt ${attempt + 1}/${maxAttempts}`);
+
+        try {
+          const response = await attemptFetch(30000);
+
+          if (response) {
+            console.log('Response Status:', response.status);
+            console.log('Response Status Text:', response.statusText);
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('Response Error Body:', errorText);
+              throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            console.log('Response Success:', result);
+            displayResults(result);
+            setIsProcessing(false);
+            return;
+          }
+
+          if (attempt < maxAttempts - 1) {
+            console.log('Request timed out, waiting 5 seconds before retry...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('API returned status')) {
+            throw error;
+          }
+          console.error('Request error:', error);
+          if (attempt < maxAttempts - 1) {
+            console.log('Error occurred, waiting 5 seconds before retry...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+        }
       }
 
-      const result = await response.json();
-      console.log('Response Success:', result);
-      displayResults(result);
-      setIsProcessing(false);
+      throw new Error('Maximum polling attempts reached without successful response');
+    };
+
+    try {
+      await pollForResponse();
     } catch (error) {
       console.error('=== API REQUEST FAILED ===');
       console.error('Error:', error);
       console.error('=========================');
 
-      if (retryCount < 1) {
-        addMessage(
-          'assistant',
-          `Connection failed. Retrying... (Attempt ${retryCount + 2}/2)`
-        );
-        setTimeout(() => {
-          submitToAPI(finalState, retryCount + 1);
-        }, 2000);
-      } else {
-        addMessage(
-          'assistant',
-          `Server connection failed. Please check API availability.\n\nError Details:\n${error instanceof Error ? error.message : 'Unknown error'}\n\nRequest Details:\nURL: ${apiUrl}\nMethod: POST\nHeaders: ${JSON.stringify(headers)}\nBody: ${JSON.stringify(requestPayload, null, 2)}`
-        );
-        setIsProcessing(false);
-      }
+      addMessage(
+        'assistant',
+        `Server connection failed after multiple attempts.\n\nError Details:\n${error instanceof Error ? error.message : 'Unknown error'}\n\nThe API might be processing your request. Please try again in a moment.`
+      );
+      setIsProcessing(false);
     }
   };
 
