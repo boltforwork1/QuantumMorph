@@ -34,27 +34,31 @@ export default function ActionBar({ resultData, isDark, onStartNew }: ActionBarP
           Start New Experiment
         </button>
 
-        <button
-          onClick={handleExportJSON}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-            isDark
-              ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
-          title="Download raw result as JSON"
-        >
-          <FileJson size={16} />
-          Export JSON
-        </button>
+        {resultData && (
+          <>
+            <button
+              onClick={handleExportJSON}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                isDark
+                  ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+              title="Download raw result as JSON"
+            >
+              <FileJson size={16} />
+              Export JSON
+            </button>
 
-        <button
-          onClick={handleDownloadPDF}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200`}
-          title="Download scientific report as PDF"
-        >
-          <Download size={16} />
-          Download Report PDF
-        </button>
+            <button
+              onClick={handleDownloadPDF}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200`}
+              title="Download scientific report as PDF"
+            >
+              <Download size={16} />
+              Download Report PDF
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

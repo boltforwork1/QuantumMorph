@@ -5,10 +5,10 @@ import ChatInput from './components/ChatInput';
 import ActionBar from './components/ActionBar';
 import ProgressIndicator from './components/ProgressIndicator';
 import HistoryPanel from './components/HistoryPanel';
-import { Atom, Moon, Sun, Clock } from 'lucide-react';
+import { Atom, Moon, Sun, Clock, ChevronLeft } from 'lucide-react';
 
 function App() {
-  const { messages, handleUserInput, isProcessing, resetWizard, loadExperiment, currentStepNumber, totalSteps, resultData } = useWizard();
+  const { messages, handleUserInput, isProcessing, resetWizard, loadExperiment, currentStepNumber, totalSteps, resultData, goBack, canGoBack } = useWizard();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme_preference');
@@ -38,6 +38,15 @@ function App() {
     <div className={`flex flex-col h-screen transition-colors duration-200 ${isDark ? 'dark bg-gray-950' : 'bg-white'}`}>
       <header className={`border-b px-4 py-3 flex items-center justify-between shadow-sm transition-colors duration-200 ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center gap-3">
+          {canGoBack && (
+            <button
+              onClick={goBack}
+              className={`p-2 rounded-lg transition-colors duration-200 ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+              title="Go back to previous step"
+            >
+              <ChevronLeft size={20} />
+            </button>
+          )}
           <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg">
             <Atom className="text-white" size={24} />
           </div>
@@ -81,7 +90,7 @@ function App() {
         </div>
       </div>
 
-      {resultData && <ActionBar resultData={resultData} isDark={isDark} onStartNew={resetWizard} />}
+      <ActionBar resultData={resultData} isDark={isDark} onStartNew={resetWizard} />
 
       <ChatInput
         onSend={handleUserInput}

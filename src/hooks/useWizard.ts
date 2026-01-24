@@ -56,6 +56,7 @@ export function useWizard() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
   const [stepIndex, setStepIndex] = useState<number>(0);
+  const [navigationHistory, setNavigationHistory] = useState<{ step: Step; state: WizardState; stepIndex: number }[]>([]);
 
   useEffect(() => {
     const savedState = localStorage.getItem('wizard_state');
@@ -137,6 +138,10 @@ export function useWizard() {
     localStorage.removeItem('wizard_messages');
     localStorage.removeItem('wizard_result_data');
     localStorage.removeItem('wizard_step_index');
+  }, []);
+
+  const saveToHistory = useCallback((step: Step, newState: WizardState, index: number) => {
+    setNavigationHistory((prev) => [...prev, { step, state: newState, stepIndex: index }]);
   }, []);
 
   const addMessage = useCallback((role: 'assistant' | 'user', content: string, options?: string[], isResult?: boolean) => {
@@ -224,7 +229,9 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, user_type: userType }));
+    const newState = { ...state, user_type: userType };
+    saveToHistory('user_type', newState, 0);
+    setState(newState);
     setCurrentStep('moisture_known');
     setStepIndex(1);
     addMessage('assistant', 'Do you know the moisture content?', ['Yes', 'No']);
@@ -232,14 +239,18 @@ export function useWizard() {
 
   const handleMoistureKnown = (input: string) => {
     const knowsMoisture = input.toLowerCase().includes('yes');
-    setState((prev) => ({ ...prev, knowsMoisture }));
+    let newState = { ...state, knowsMoisture };
 
     if (knowsMoisture) {
+      saveToHistory('moisture_known', newState, 1);
+      setState(newState);
       setCurrentStep('moisture_value');
       setStepIndex(2);
       addMessage('assistant', 'Enter moisture content (value between 0 and 1):');
     } else {
-      setState((prev) => ({ ...prev, moisture: 0.3 }));
+      newState = { ...newState, moisture: 0.3 };
+      saveToHistory('moisture_known', newState, 1);
+      setState(newState);
       setCurrentStep('category');
       setStepIndex(2);
       addMessage('assistant', 'Select material category:', [
@@ -258,7 +269,9 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, moisture }));
+    const newState = { ...state, moisture };
+    saveToHistory('moisture_value', newState, 2);
+    setState(newState);
     setCurrentStep('category');
     setStepIndex(3);
     addMessage('assistant', 'Select material category:', ['agricultural', 'biomass', 'plastic', 'mixed']);
@@ -271,7 +284,9 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, category }));
+    const newState = { ...state, category };
+    saveToHistory('category', newState, 3);
+    setState(newState);
     setCurrentStep('material');
     setStepIndex(3);
     addMessage('assistant', 'Select material:', ['Rice Straw', 'Date Palm Seeds', 'Other']);
@@ -279,11 +294,14 @@ export function useWizard() {
 
   const handleMaterial = (input: string) => {
     if (input.toLowerCase() === 'other') {
+      saveToHistory('material', state, 3);
       setCurrentStep('material_custom');
       setStepIndex(4);
       addMessage('assistant', 'Enter custom material name:');
     } else {
-      setState((prev) => ({ ...prev, material_name: input }));
+      const newState = { ...state, material_name: input };
+      saveToHistory('material', newState, 3);
+      setState(newState);
       setCurrentStep('mass');
       setStepIndex(4);
       addMessage('assistant', 'Enter sample mass (grams):');
@@ -291,7 +309,9 @@ export function useWizard() {
   };
 
   const handleMaterialCustom = (input: string) => {
-    setState((prev) => ({ ...prev, material_name: input }));
+    const newState = { ...state, material_name: input };
+    saveToHistory('material_custom', newState, 4);
+    setState(newState);
     setCurrentStep('mass');
     setStepIndex(5);
     addMessage('assistant', 'Enter sample mass (grams):');
@@ -304,7 +324,9 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, mass }));
+    const newState = { ...state, mass };
+    saveToHistory('mass', newState, 4);
+    setState(newState);
     setCurrentStep('processing_goal');
     setStepIndex(5);
     addMessage('assistant', 'Select processing target:', [
@@ -321,7 +343,9 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, processing_goal: goal }));
+    const newState = { ...state, processing_goal: goal };
+    saveToHistory('processing_goal', newState, 5);
+    setState(newState);
     setCurrentStep('optimization_goal');
     setStepIndex(6);
     addMessage('assistant', 'Select optimization objective:', ['max_co2', 'balanced', 'max_stability']);
@@ -334,7 +358,9 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, optimization_goal: goal }));
+    const newState = { ...state, optimization_goal: goal };
+    saveToHistory('optimization_goal', newState, 6);
+    setState(newState);
 
     if (state.processing_goal === 'activated_carbon' || state.processing_goal === 'composite_filter') {
       setCurrentStep('activation_method');
@@ -354,7 +380,9 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, activation: { type: method } }));
+    const newState = { ...state, activation: { type: method } };
+    saveToHistory('activation_method', newState, 7);
+    setState(newState);
 
     if (method === 'chemical') {
       setCurrentStep('activation_agent');
@@ -380,10 +408,12 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({
-      ...prev,
-      activation: { ...prev.activation!, agent },
-    }));
+    const newState = {
+      ...state,
+      activation: { ...state.activation!, agent },
+    };
+    saveToHistory('activation_agent', newState, 8);
+    setState(newState);
 
     setCurrentStep('concentration_known');
     setStepIndex(8);
@@ -422,10 +452,12 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({
-      ...prev,
-      activation: { ...prev.activation!, concentration },
-    }));
+    const newState = {
+      ...state,
+      activation: { ...state.activation!, concentration },
+    };
+    saveToHistory('concentration_value', newState, 8);
+    setState(newState);
 
     if (state.processing_goal === 'composite_filter') {
       setCurrentStep('composite_strategy');
@@ -445,7 +477,9 @@ export function useWizard() {
       return;
     }
 
-    setState((prev) => ({ ...prev, composite: { strategy } }));
+    const newState = { ...state, composite: { strategy } };
+    saveToHistory('composite_strategy', newState, 9);
+    setState(newState);
     setCurrentStep('num_trials');
     setStepIndex(9);
     addMessage('assistant', 'Enter number of virtual experiments (num_trials):');
@@ -733,7 +767,7 @@ export function useWizard() {
     return lines.join('\n');
   };
 
-  const resetWizard = () => {
+  const resetWizard = useCallback(() => {
     clearLocalStorage();
     setMessages([
       {
@@ -749,7 +783,21 @@ export function useWizard() {
     setJobId(null);
     setResultData(null);
     setStepIndex(0);
-  };
+    setNavigationHistory([]);
+  }, [clearLocalStorage]);
+
+  const goBack = useCallback(() => {
+    if (navigationHistory.length === 0) return;
+
+    const previousEntry = navigationHistory[navigationHistory.length - 1];
+    const newHistory = navigationHistory.slice(0, -1);
+
+    setState(previousEntry.state);
+    setCurrentStep(previousEntry.step);
+    setStepIndex(previousEntry.stepIndex);
+    setNavigationHistory(newHistory);
+    setResultData(null);
+  }, [navigationHistory]);
 
   const loadExperiment = useCallback((experiment: ExperimentRecord) => {
     clearLocalStorage();
@@ -796,8 +844,10 @@ export function useWizard() {
     currentStep,
     resetWizard,
     loadExperiment,
+    goBack,
     currentStepNumber: stepIndex,
     totalSteps: FIXED_TOTAL_STEPS,
     resultData,
+    canGoBack: navigationHistory.length > 0,
   };
 }
