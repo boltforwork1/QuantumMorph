@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Message, WizardState } from '../types';
+import { saveExperiment, ExperimentRecord } from '../utils/experimentHistory';
 
 type Step =
   | 'user_type'
@@ -627,6 +628,8 @@ export function useWizard() {
 
     const explanation = generateExplanation(result);
     addMessage('assistant', explanation, undefined, true);
+
+    saveExperiment(state, result);
   };
 
   const generateExplanation = (result: any): string => {
@@ -748,12 +751,54 @@ export function useWizard() {
     setStepIndex(0);
   };
 
+  const loadExperiment = useCallback((experiment: ExperimentRecord) => {
+    clearLocalStorage();
+
+    const loadedState = experiment.full_input_json;
+    setState(loadedState);
+
+    const summaryLines: string[] = [];
+    summaryLines.push('Loaded previous experiment:');
+    summaryLines.push('');
+    summaryLines.push(`Material: ${loadedState.material_name}`);
+    summaryLines.push(`Category: ${loadedState.category}`);
+    summaryLines.push(`Mass: ${loadedState.mass}g`);
+    summaryLines.push(`Processing Goal: ${loadedState.processing_goal}`);
+    summaryLines.push(`Optimization Goal: ${loadedState.optimization_goal}`);
+    if (experiment.co2_score !== null) {
+      summaryLines.push(`Previous CO₂ Score: ${experiment.co2_score.toFixed(2)}`);
+    }
+    summaryLines.push('');
+    summaryLines.push('You can now modify any parameters and re-run the experiment.');
+
+    setMessages([
+      {
+        id: '1',
+        role: 'assistant',
+        content: 'Welcome to Quantum-Morph AI Lab.\n\nWho are you?',
+        options: ['Researcher / Scientist', 'Industrial User (Factory)', 'Student / Learning Mode'],
+      },
+      {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: summaryLines.join('\n'),
+      },
+    ]);
+
+    setCurrentStep('user_type');
+    setStepIndex(0);
+    setIsProcessing(false);
+    setJobId(null);
+    setResultData(null);
+  }, []);
+
   return {
     messages,
     handleUserInput,
     isProcessing,
     currentStep,
     resetWizard,
+    loadExperiment,
     currentStepNumber: stepIndex,
     totalSteps: FIXED_TOTAL_STEPS,
     resultData,

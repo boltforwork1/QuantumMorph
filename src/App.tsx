@@ -4,16 +4,18 @@ import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
 import ActionBar from './components/ActionBar';
 import ProgressIndicator from './components/ProgressIndicator';
-import { Atom, Moon, Sun } from 'lucide-react';
+import HistoryPanel from './components/HistoryPanel';
+import { Atom, Moon, Sun, Clock } from 'lucide-react';
 
 function App() {
-  const { messages, handleUserInput, isProcessing, resetWizard, currentStepNumber, totalSteps, resultData } = useWizard();
+  const { messages, handleUserInput, isProcessing, resetWizard, loadExperiment, currentStepNumber, totalSteps, resultData } = useWizard();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme_preference');
     if (saved) return saved === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('theme_preference', isDark ? 'dark' : 'light');
@@ -46,6 +48,14 @@ function App() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setIsHistoryOpen(true)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-200 font-medium text-sm ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+            title="View previous experiments"
+          >
+            <Clock size={18} />
+            <span className="hidden sm:inline">Previous Experiments</span>
+          </button>
+          <button
             onClick={toggleTheme}
             className={`p-2 rounded-lg transition-colors duration-200 ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
             title="Toggle dark mode"
@@ -77,6 +87,16 @@ function App() {
         onSend={handleUserInput}
         disabled={isProcessing}
         placeholder={isProcessing ? 'Processing...' : 'Type your answer or click an option above...'}
+        isDark={isDark}
+      />
+
+      <HistoryPanel
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        onLoadExperiment={(experiment) => {
+          loadExperiment(experiment);
+          setIsHistoryOpen(false);
+        }}
         isDark={isDark}
       />
     </div>
