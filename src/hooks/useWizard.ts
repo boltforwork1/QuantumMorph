@@ -860,5 +860,6 @@ export function useWizard() {
     totalSteps: FIXED_TOTAL_STEPS,
     resultData,
     canGoBack: navigationHistory.length > 0,
+    state,
   };
 }

@@ -8,12 +8,13 @@ import ProgressIndicator from './components/ProgressIndicator';
 import HistoryPanel from './components/HistoryPanel';
 import ComparePanel from './components/ComparePanel';
 import AuthModal from './components/AuthModal';
+import AskAIPanel from './components/AskAIPanel';
 import { ExperimentRecord } from './utils/experimentHistory';
 import { Atom, Moon, Sun, Clock, ChevronLeft, RotateCcw, LogIn, LogOut } from 'lucide-react';
 
 function App() {
   const { user, signOut } = useAuth();
-  const { messages, handleUserInput, isProcessing, resetWizard, loadExperiment, currentStepNumber, totalSteps, resultData, goBack, canGoBack } = useWizard();
+  const { messages, handleUserInput, isProcessing, resetWizard, loadExperiment, currentStepNumber, totalSteps, resultData, goBack, canGoBack, state } = useWizard();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevUserRef = useRef(user);
   const [isDark, setIsDark] = useState(() => {
@@ -24,6 +25,7 @@ function App() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAskAIOpen, setIsAskAIOpen] = useState(false);
   const [compareExperimentA, setCompareExperimentA] = useState<ExperimentRecord | null>(null);
   const [compareExperimentB, setCompareExperimentB] = useState<ExperimentRecord | null>(null);
   const [compareFromResult, setCompareFromResult] = useState(false);
@@ -66,6 +68,10 @@ function App() {
 
   const handleOpenCompareFromResult = () => {
     setIsHistoryOpen(true);
+  };
+
+  const handleOpenAskAI = () => {
+    setIsAskAIOpen(true);
   };
 
   return (
@@ -156,7 +162,12 @@ function App() {
         </div>
       </div>
 
-      <ActionBar resultData={resultData} isDark={isDark} onOpenCompare={handleOpenCompareFromResult} />
+      <ActionBar
+        resultData={resultData}
+        isDark={isDark}
+        onOpenCompare={handleOpenCompareFromResult}
+        onOpenAskAI={handleOpenAskAI}
+      />
 
       <ChatInput
         onSend={handleUserInput}
@@ -188,6 +199,15 @@ function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         isDark={isDark}
+      />
+
+      <AskAIPanel
+        isOpen={isAskAIOpen}
+        onClose={() => setIsAskAIOpen(false)}
+        isDark={isDark}
+        userType={state.user_type || 'researcher'}
+        inputJson={state}
+        resultJson={resultData || {}}
       />
     </div>
   );

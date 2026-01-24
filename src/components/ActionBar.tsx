@@ -1,13 +1,14 @@
-import { Download, FileJson, GitCompare } from 'lucide-react';
+import { Download, FileJson, GitCompare, MessageCircle } from 'lucide-react';
 import { exportToJSON, exportToPDF } from '../utils/export';
 
 interface ActionBarProps {
   resultData: any;
   isDark: boolean;
   onOpenCompare?: () => void;
+  onOpenAskAI?: () => void;
 }
 
-export default function ActionBar({ resultData, isDark, onOpenCompare }: ActionBarProps) {
+export default function ActionBar({ resultData, isDark, onOpenCompare, onOpenAskAI }: ActionBarProps) {
   const handleExportJSON = () => {
     const timestamp = new Date().toISOString().slice(0, 10);
     exportToJSON(resultData, `quantum-morph-result-${timestamp}.json`);
@@ -25,13 +26,28 @@ export default function ActionBar({ resultData, isDark, onOpenCompare }: ActionB
   return (
     <div className={`border-t px-4 py-4 transition-colors duration-200 ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
       <div className="max-w-4xl mx-auto flex gap-3 flex-wrap">
+        {onOpenAskAI && (
+          <button
+            onClick={onOpenAskAI}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              isDark
+                ? 'bg-green-700 text-white hover:bg-green-600'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
+            title="Ask AI about your experiment"
+          >
+            <MessageCircle size={16} />
+            Ask the AI
+          </button>
+        )}
+
         {onOpenCompare && (
           <button
             onClick={onOpenCompare}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
               isDark
-                ? 'bg-purple-700 text-white hover:bg-purple-600'
-                : 'bg-purple-600 text-white hover:bg-purple-700'
+                ? 'bg-teal-700 text-white hover:bg-teal-600'
+                : 'bg-teal-600 text-white hover:bg-teal-700'
             }`}
             title="Compare this experiment with another"
           >
