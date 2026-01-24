@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, MessageCircle, Loader2 } from 'lucide-react';
+import { X, Send, MessageCircle, Loader2, Sparkles } from 'lucide-react';
+import { generateResponse, getGuidedQuestions } from '../utils/offlineAI';
 
 interface Message {
   id: string;
@@ -28,74 +29,70 @@ export default function AskAIPanel({
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m here to help you understand your experiment results. Ask me anything about the data, the process, or the predictions.',
+      content: 'Hello! I\'m here to help you understand your experiment results. Ask me anything about the data, the process, or the predictions.\n\nClick a suggested question below or type your own!',
     },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, questionText?: string) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    const questionToAsk = questionText || input.trim();
+    if (!questionToAsk || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: questionToAsk,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setShowSuggestions(false);
 
-    try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-ai`;
-      const headers = {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json',
-      };
+    setTimeout(() => {
+      try {
+        const response = generateResponse(
+          questionToAsk,
+          userType,
+          inputJson,
+          resultJson
+        );
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          question: userMessage.content,
-          user_type: userType,
-          input_json: inputJson,
-          result_json: resultJson,
-        }),
-      });
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: response.answer,
+        };
 
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        setMessages((prev) => [...prev, assistantMessage]);
+      } catch (error) {
+        console.error('Error generating response:', error);
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'Sorry, I encountered an error processing your question. Please try again.',
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
       }
-
-      const data = await response.json();
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.answer,
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error asking AI:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error processing your question. Please try again.',
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
+    }, 500);
   };
+
+  const handleQuestionClick = (question: string) => {
+    const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+    handleSubmit(syntheticEvent, question);
+  };
+
+  const guidedQuestions = getGuidedQuestions(userType, inputJson, resultJson);
 
   if (!isOpen) return null;
 
@@ -106,7 +103,7 @@ export default function AskAIPanel({
         onClick={onClose}
       />
       <div
-        className={`fixed right-0 top-0 h-full w-full sm:w-[480px] z-50 shadow-2xl transform transition-transform duration-300 overflow-hidden flex flex-col ${
+        className={`fixed right-0 top-0 h-full w-full sm:w-[540px] z-50 shadow-2xl transform transition-transform duration-300 overflow-hidden flex flex-col ${
           isDark ? 'bg-gray-900' : 'bg-white'
         }`}
       >
@@ -116,10 +113,17 @@ export default function AskAIPanel({
           }`}
         >
           <div className="flex items-center gap-3">
-            <MessageCircle size={24} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-            <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-50' : 'text-gray-900'}`}>
-              Ask the AI
-            </h2>
+            <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+              <Sparkles size={20} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+            </div>
+            <div>
+              <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-50' : 'text-gray-900'}`}>
+                Ask the AI
+              </h2>
+              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                Offline Scientific Assistant
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -133,6 +137,38 @@ export default function AskAIPanel({
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-4">
+            {showSuggestions && messages.length === 1 && (
+              <div className="space-y-4 mb-6">
+                <div className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-2`}>
+                  <Sparkles size={16} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+                  Suggested Questions
+                </div>
+
+                {Object.entries(guidedQuestions).map(([category, questions]) => (
+                  <div key={category} className="space-y-2">
+                    <div className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                      {category}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {questions.map((question) => (
+                        <button
+                          key={question}
+                          onClick={() => handleQuestionClick(question)}
+                          className={`px-3 py-2 rounded-lg text-sm transition-all duration-200 border ${
+                            isDark
+                              ? 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-blue-900/30 hover:border-blue-500'
+                              : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400'
+                          }`}
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -164,7 +200,7 @@ export default function AskAIPanel({
                 >
                   <div className="flex items-center gap-2">
                     <Loader2 size={16} className="animate-spin" />
-                    <span className="text-sm">Thinking...</span>
+                    <span className="text-sm">Analyzing your experiment...</span>
                   </div>
                 </div>
               </div>
@@ -174,7 +210,7 @@ export default function AskAIPanel({
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(e) => handleSubmit(e)}
           className={`border-t p-4 ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}
         >
           <div className="flex gap-2">
