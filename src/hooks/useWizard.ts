@@ -58,7 +58,7 @@ export function useWizard() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
   const [stepIndex, setStepIndex] = useState<number>(0);
-  const [navigationHistory, setNavigationHistory] = useState<{ step: Step; state: WizardState; stepIndex: number }[]>([]);
+  const [navigationHistory, setNavigationHistory] = useState<{ step: Step; state: WizardState; stepIndex: number; messages: Message[] }[]>([]);
 
   useEffect(() => {
     const savedState = localStorage.getItem('wizard_state');
@@ -143,7 +143,10 @@ export function useWizard() {
   }, []);
 
   const saveToHistory = useCallback((step: Step, newState: WizardState, index: number) => {
-    setNavigationHistory((prev) => [...prev, { step, state: newState, stepIndex: index }]);
+    setMessages((currentMessages) => {
+      setNavigationHistory((prev) => [...prev, { step, state: newState, stepIndex: index, messages: currentMessages }]);
+      return currentMessages;
+    });
   }, []);
 
   const addMessage = useCallback((role: 'assistant' | 'user', content: string, options?: string[], isResult?: boolean) => {
@@ -797,6 +800,7 @@ export function useWizard() {
     setState(previousEntry.state);
     setCurrentStep(previousEntry.step);
     setStepIndex(previousEntry.stepIndex);
+    setMessages(previousEntry.messages);
     setNavigationHistory(newHistory);
     setResultData(null);
   }, [navigationHistory]);

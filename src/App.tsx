@@ -15,6 +15,7 @@ function App() {
   const { user, signOut } = useAuth();
   const { messages, handleUserInput, isProcessing, resetWizard, loadExperiment, currentStepNumber, totalSteps, resultData, goBack, canGoBack } = useWizard();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevUserRef = useRef(user);
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme_preference');
     if (saved) return saved === 'dark';
@@ -39,6 +40,18 @@ function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    const prevUser = prevUserRef.current;
+    const currentUserId = user?.id;
+    const prevUserId = prevUser?.id;
+
+    if (prevUserId !== currentUserId) {
+      resetWizard();
+    }
+
+    prevUserRef.current = user;
+  }, [user, resetWizard]);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
