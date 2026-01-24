@@ -38,12 +38,17 @@ export function useWizard() {
     const savedState = localStorage.getItem('wizard_state');
     const savedStep = localStorage.getItem('wizard_step') as Step | null;
     const savedJobId = localStorage.getItem('wizard_job_id');
+    const savedMessages = localStorage.getItem('wizard_messages');
 
     if (savedState) {
       try {
         const parsedState = JSON.parse(savedState);
         setState(parsedState);
         if (savedStep) setCurrentStep(savedStep);
+        if (savedMessages) {
+          const parsedMessages = JSON.parse(savedMessages);
+          setMessages(parsedMessages);
+        }
         if (savedJobId) {
           setJobId(savedJobId);
           setIsProcessing(true);
@@ -63,19 +68,22 @@ export function useWizard() {
 
   useEffect(() => {
     if (isInitialized && currentStep !== 'user_type') {
-      saveStateToLocalStorage(state, currentStep);
+      localStorage.setItem('wizard_state', JSON.stringify(state));
+      localStorage.setItem('wizard_step', currentStep);
     }
-  }, [state, currentStep, isInitialized, saveStateToLocalStorage]);
+  }, [state, currentStep, isInitialized]);
 
-  const saveStateToLocalStorage = useCallback((newState: WizardState, newStep: Step) => {
-    localStorage.setItem('wizard_state', JSON.stringify(newState));
-    localStorage.setItem('wizard_step', newStep);
-  }, []);
+  useEffect(() => {
+    if (isInitialized && messages.length > 1) {
+      localStorage.setItem('wizard_messages', JSON.stringify(messages));
+    }
+  }, [messages, isInitialized]);
 
   const clearLocalStorage = useCallback(() => {
     localStorage.removeItem('wizard_state');
     localStorage.removeItem('wizard_step');
     localStorage.removeItem('wizard_job_id');
+    localStorage.removeItem('wizard_messages');
   }, []);
 
   const addMessage = useCallback((role: 'assistant' | 'user', content: string, options?: string[], isResult?: boolean) => {
