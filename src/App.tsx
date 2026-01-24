@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWizard } from './hooks/useWizard';
+import { useAuth } from './contexts/AuthContext';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
 import ActionBar from './components/ActionBar';
 import ProgressIndicator from './components/ProgressIndicator';
 import HistoryPanel from './components/HistoryPanel';
 import ComparePanel from './components/ComparePanel';
+import AuthModal from './components/AuthModal';
 import { ExperimentRecord } from './utils/experimentHistory';
-import { Atom, Moon, Sun, Clock, ChevronLeft, RotateCcw } from 'lucide-react';
+import { Atom, Moon, Sun, Clock, ChevronLeft, RotateCcw, LogIn, LogOut } from 'lucide-react';
 
 function App() {
+  const { user, signOut } = useAuth();
   const { messages, handleUserInput, isProcessing, resetWizard, loadExperiment, currentStepNumber, totalSteps, resultData, goBack, canGoBack } = useWizard();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = useState(() => {
@@ -19,6 +22,7 @@ function App() {
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [compareExperimentA, setCompareExperimentA] = useState<ExperimentRecord | null>(null);
   const [compareExperimentB, setCompareExperimentB] = useState<ExperimentRecord | null>(null);
   const [compareFromResult, setCompareFromResult] = useState(false);
@@ -73,6 +77,30 @@ function App() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {user ? (
+            <>
+              <div className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${isDark ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                <span className="font-medium">{user.email}</span>
+              </div>
+              <button
+                onClick={signOut}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-200 font-medium text-sm ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                title="Logout"
+              >
+                <LogOut size={18} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-200 font-medium text-sm bg-blue-600 hover:bg-blue-700 text-white`}
+              title="Login or Sign Up"
+            >
+              <LogIn size={18} />
+              <span className="hidden sm:inline">Login</span>
+            </button>
+          )}
           <button
             onClick={() => setIsHistoryOpen(true)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-200 font-medium text-sm ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
@@ -140,6 +168,12 @@ function App() {
         onClose={() => setIsCompareOpen(false)}
         experimentA={compareExperimentA}
         experimentB={compareExperimentB}
+        isDark={isDark}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
         isDark={isDark}
       />
     </div>

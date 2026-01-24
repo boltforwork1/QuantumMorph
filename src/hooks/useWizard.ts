@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Message, WizardState } from '../types';
 import { saveExperiment, ExperimentRecord } from '../utils/experimentHistory';
+import { useAuth } from '../contexts/AuthContext';
 
 type Step =
   | 'user_type'
@@ -41,6 +42,7 @@ const STEP_SEQUENCE: Step[] = [
 const FIXED_TOTAL_STEPS = 10;
 
 export function useWizard() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -663,7 +665,7 @@ export function useWizard() {
     const explanation = generateExplanation(result);
     addMessage('assistant', explanation, undefined, true);
 
-    saveExperiment(state, result);
+    saveExperiment(state, result, user?.id);
   };
 
   const generateExplanation = (result: any): string => {

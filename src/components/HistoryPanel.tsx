@@ -1,6 +1,7 @@
 import { X, Clock, Trash2, RotateCcw, GitCompare } from 'lucide-react';
 import { ExperimentRecord, getExperimentHistory, deleteExperiment } from '../utils/experimentHistory';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HistoryPanelProps {
   isOpen: boolean;
@@ -11,18 +12,21 @@ interface HistoryPanelProps {
 }
 
 export default function HistoryPanel({ isOpen, onClose, onLoadExperiment, onCompare, isDark }: HistoryPanelProps) {
+  const { user } = useAuth();
   const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      const history = getExperimentHistory();
-      setExperiments(history);
-      setSelectedIds([]);
-      setCompareMode(false);
+      (async () => {
+        const history = await getExperimentHistory(user?.id);
+        setExperiments(history);
+        setSelectedIds([]);
+        setCompareMode(false);
+      })();
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
@@ -45,9 +49,9 @@ export default function HistoryPanel({ isOpen, onClose, onLoadExperiment, onComp
     }
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    deleteExperiment(id);
+    await deleteExperiment(id, user?.id);
     setExperiments(experiments.filter((exp) => exp.id !== id));
   };
 
