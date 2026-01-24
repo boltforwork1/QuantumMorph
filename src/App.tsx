@@ -5,7 +5,7 @@ import ChatInput from './components/ChatInput';
 import ActionBar from './components/ActionBar';
 import ProgressIndicator from './components/ProgressIndicator';
 import HistoryPanel from './components/HistoryPanel';
-import { Atom, Moon, Sun, Clock, ChevronLeft } from 'lucide-react';
+import { Atom, Moon, Sun, Clock, ChevronLeft, RotateCcw } from 'lucide-react';
 
 function App() {
   const { messages, handleUserInput, isProcessing, resetWizard, loadExperiment, currentStepNumber, totalSteps, resultData, goBack, canGoBack } = useWizard();
@@ -65,6 +65,14 @@ function App() {
             <span className="hidden sm:inline">Previous Experiments</span>
           </button>
           <button
+            onClick={resetWizard}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-200 font-medium text-sm ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+            title="Clear and start a new experiment"
+          >
+            <RotateCcw size={18} />
+            <span className="hidden sm:inline">Start New Experiment</span>
+          </button>
+          <button
             onClick={toggleTheme}
             className={`p-2 rounded-lg transition-colors duration-200 ${isDark ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
             title="Toggle dark mode"
@@ -90,7 +98,7 @@ function App() {
         </div>
       </div>
 
-      <ActionBar resultData={resultData} isDark={isDark} onStartNew={resetWizard} />
+      <ActionBar resultData={resultData} isDark={isDark} />
 
       <ChatInput
         onSend={handleUserInput}
