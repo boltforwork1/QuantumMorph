@@ -5,6 +5,8 @@ import ChatInput from './components/ChatInput';
 import ActionBar from './components/ActionBar';
 import ProgressIndicator from './components/ProgressIndicator';
 import HistoryPanel from './components/HistoryPanel';
+import ComparePanel from './components/ComparePanel';
+import { ExperimentRecord } from './utils/experimentHistory';
 import { Atom, Moon, Sun, Clock, ChevronLeft, RotateCcw } from 'lucide-react';
 
 function App() {
@@ -16,6 +18,10 @@ function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [compareExperimentA, setCompareExperimentA] = useState<ExperimentRecord | null>(null);
+  const [compareExperimentB, setCompareExperimentB] = useState<ExperimentRecord | null>(null);
+  const [compareFromResult, setCompareFromResult] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('theme_preference', isDark ? 'dark' : 'light');
@@ -32,6 +38,17 @@ function App() {
 
   const toggleTheme = () => {
     setIsDark(!isDark);
+  };
+
+  const handleCompare = (experimentA: ExperimentRecord, experimentB: ExperimentRecord) => {
+    setCompareExperimentA(experimentA);
+    setCompareExperimentB(experimentB);
+    setIsHistoryOpen(false);
+    setIsCompareOpen(true);
+  };
+
+  const handleOpenCompareFromResult = () => {
+    setIsHistoryOpen(true);
   };
 
   return (
@@ -98,7 +115,7 @@ function App() {
         </div>
       </div>
 
-      <ActionBar resultData={resultData} isDark={isDark} />
+      <ActionBar resultData={resultData} isDark={isDark} onOpenCompare={handleOpenCompareFromResult} />
 
       <ChatInput
         onSend={handleUserInput}
@@ -114,6 +131,15 @@ function App() {
           loadExperiment(experiment);
           setIsHistoryOpen(false);
         }}
+        onCompare={handleCompare}
+        isDark={isDark}
+      />
+
+      <ComparePanel
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        experimentA={compareExperimentA}
+        experimentB={compareExperimentB}
         isDark={isDark}
       />
     </div>

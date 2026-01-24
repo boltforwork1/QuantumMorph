@@ -1,12 +1,13 @@
-import { Download, FileJson } from 'lucide-react';
+import { Download, FileJson, GitCompare } from 'lucide-react';
 import { exportToJSON, exportToPDF } from '../utils/export';
 
 interface ActionBarProps {
   resultData: any;
   isDark: boolean;
+  onOpenCompare?: () => void;
 }
 
-export default function ActionBar({ resultData, isDark }: ActionBarProps) {
+export default function ActionBar({ resultData, isDark, onOpenCompare }: ActionBarProps) {
   const handleExportJSON = () => {
     const timestamp = new Date().toISOString().slice(0, 10);
     exportToJSON(resultData, `quantum-morph-result-${timestamp}.json`);
@@ -24,6 +25,21 @@ export default function ActionBar({ resultData, isDark }: ActionBarProps) {
   return (
     <div className={`border-t px-4 py-4 transition-colors duration-200 ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
       <div className="max-w-4xl mx-auto flex gap-3 flex-wrap">
+        {onOpenCompare && (
+          <button
+            onClick={onOpenCompare}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              isDark
+                ? 'bg-purple-700 text-white hover:bg-purple-600'
+                : 'bg-purple-600 text-white hover:bg-purple-700'
+            }`}
+            title="Compare this experiment with another"
+          >
+            <GitCompare size={16} />
+            Compare with Another
+          </button>
+        )}
+
         <button
           onClick={handleExportJSON}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
