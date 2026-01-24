@@ -563,7 +563,7 @@ export function useWizard() {
     lines.push('MATERIAL SPECIFICATION');
     lines.push(`Material: ${result.material?.name || 'N/A'}`);
     lines.push(`Category: ${result.material?.category || 'N/A'}`);
-    lines.push(`Mass: ${result.material?.mass || 'N/A'} g`);
+    lines.push(`Mass: ${result.material?.input_mass_g || 'N/A'} g`);
     lines.push(`Moisture Content: ${((result.material?.moisture || 0) * 100).toFixed(1)}%`);
     lines.push('');
 
