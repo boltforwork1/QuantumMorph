@@ -692,8 +692,8 @@ export function useWizard() {
       const confidence = result.predicted_performance.confidence;
 
       if (co2Score !== undefined && co2Score !== null) {
-        lines.push(`CO₂ Adsorption Score: ${co2Score.toFixed(2)}`);
-        lines.push(`  This represents the predicted CO₂ adsorption capacity of the optimized material.`);
+        lines.push(`CO2 Adsorption Score: ${co2Score.toFixed(2)}`);
+        lines.push(`  This represents the predicted CO2 adsorption capacity of the optimized material.`);
         lines.push('');
       }
       if (confidence !== undefined && confidence !== null) {

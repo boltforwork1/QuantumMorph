@@ -255,9 +255,9 @@ export const exportToPDF = (result: any, filename: string = 'report.pdf') => {
       const confidence = result.predicted_performance.confidence;
 
       if (co2Score !== undefined && co2Score !== null) {
-        doc.text(`CO₂ Adsorption Score: ${co2Score.toFixed(2)}`, margin, y);
+        doc.text(`CO2 Adsorption Score: ${co2Score.toFixed(2)}`, margin, y);
         y += lineHeight;
-        const descText = 'This represents the predicted CO₂ adsorption capacity of the optimized material.';
+        const descText = 'This represents the predicted CO2 adsorption capacity of the optimized material.';
         const splitDesc = doc.splitTextToSize(descText, maxWidth - 10);
         doc.text(splitDesc, margin + 5, y);
         y += lineHeight * splitDesc.length + 3;
