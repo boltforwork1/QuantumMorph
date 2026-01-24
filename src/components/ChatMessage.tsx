@@ -7,6 +7,50 @@ interface ChatMessageProps {
 }
 
 export default function ChatMessage({ message, onOptionClick, isDark = false }: ChatMessageProps) {
+  const hasCodeBlock = message.content.includes('```');
+  const isCodeBlock = hasCodeBlock && message.content.startsWith('```');
+
+  const renderContent = () => {
+    if (!hasCodeBlock) {
+      return <div className="whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">{message.content}</div>;
+    }
+
+    const parts = message.content.split(/(```[\s\S]*?```)/g);
+
+    return (
+      <div className="space-y-2">
+        {parts.map((part, index) => {
+          if (part.startsWith('```')) {
+            const code = part.replace(/^```\w*\n?/, '').replace(/\n?```$/, '');
+            return (
+              <pre
+                key={index}
+                className={`rounded-lg p-4 overflow-x-auto font-mono text-xs leading-relaxed ${
+                  isDark
+                    ? 'bg-slate-900 text-gray-200 border border-gray-700'
+                    : 'bg-gray-50 text-gray-800 border border-gray-300'
+                }`}
+                style={{
+                  lineHeight: '1.7',
+                  tabSize: 2,
+                }}
+              >
+                <code className={isDark ? 'text-gray-200' : 'text-gray-800'}>{code}</code>
+              </pre>
+            );
+          } else if (part.trim()) {
+            return (
+              <div key={index} className="whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
+                {part}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
+
   return (
     <div
       className={`flex ${
@@ -19,14 +63,14 @@ export default function ChatMessage({ message, onOptionClick, isDark = false }: 
             ? 'bg-blue-600 text-white'
             : message.isResult
             ? isDark
-              ? 'bg-gray-900 border border-gray-700'
-              : 'bg-white border border-gray-200'
+              ? 'bg-gray-900 border border-gray-700 text-gray-100'
+              : 'bg-white border border-gray-200 text-gray-900'
             : isDark
             ? 'bg-gray-800 text-gray-100'
             : 'bg-gray-100 text-gray-900'
         }`}
       >
-        <div className="whitespace-pre-wrap break-words font-mono text-sm">{message.content}</div>
+        {renderContent()}
         {message.options && message.options.length > 0 && onOptionClick && (
           <div className="mt-3 flex flex-wrap gap-2">
             {message.options.map((option) => (

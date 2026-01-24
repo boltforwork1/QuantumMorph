@@ -37,6 +37,8 @@ const STEP_SEQUENCE: Step[] = [
   'num_trials',
 ];
 
+const FIXED_TOTAL_STEPS = 10;
+
 export function useWizard() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -52,18 +54,40 @@ export function useWizard() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
+  const [stepIndex, setStepIndex] = useState<number>(0);
 
   useEffect(() => {
     const savedState = localStorage.getItem('wizard_state');
     const savedStep = localStorage.getItem('wizard_step') as Step | null;
     const savedJobId = localStorage.getItem('wizard_job_id');
     const savedMessages = localStorage.getItem('wizard_messages');
+    const savedResultData = localStorage.getItem('wizard_result_data');
+    const savedStepIndex = localStorage.getItem('wizard_step_index');
 
-    if (savedState) {
+    if (savedResultData) {
+      try {
+        const parsedResult = JSON.parse(savedResultData);
+        setResultData(parsedResult);
+        setCurrentStep('complete');
+        setStepIndex(FIXED_TOTAL_STEPS);
+
+        if (savedMessages) {
+          const parsedMessages = JSON.parse(savedMessages);
+          setMessages(parsedMessages);
+        }
+        if (savedState) {
+          const parsedState = JSON.parse(savedState);
+          setState(parsedState);
+        }
+      } catch (error) {
+        console.error('Failed to restore result from localStorage:', error);
+      }
+    } else if (savedState) {
       try {
         const parsedState = JSON.parse(savedState);
         setState(parsedState);
         if (savedStep) setCurrentStep(savedStep);
+        if (savedStepIndex) setStepIndex(parseInt(savedStepIndex));
         if (savedMessages) {
           const parsedMessages = JSON.parse(savedMessages);
           setMessages(parsedMessages);
@@ -89,8 +113,9 @@ export function useWizard() {
     if (isInitialized && currentStep !== 'user_type') {
       localStorage.setItem('wizard_state', JSON.stringify(state));
       localStorage.setItem('wizard_step', currentStep);
+      localStorage.setItem('wizard_step_index', stepIndex.toString());
     }
-  }, [state, currentStep, isInitialized]);
+  }, [state, currentStep, isInitialized, stepIndex]);
 
   useEffect(() => {
     if (isInitialized && messages.length > 1) {
@@ -98,11 +123,19 @@ export function useWizard() {
     }
   }, [messages, isInitialized]);
 
+  useEffect(() => {
+    if (isInitialized && resultData) {
+      localStorage.setItem('wizard_result_data', JSON.stringify(resultData));
+    }
+  }, [resultData, isInitialized]);
+
   const clearLocalStorage = useCallback(() => {
     localStorage.removeItem('wizard_state');
     localStorage.removeItem('wizard_step');
     localStorage.removeItem('wizard_job_id');
     localStorage.removeItem('wizard_messages');
+    localStorage.removeItem('wizard_result_data');
+    localStorage.removeItem('wizard_step_index');
   }, []);
 
   const addMessage = useCallback((role: 'assistant' | 'user', content: string, options?: string[], isResult?: boolean) => {
@@ -192,6 +225,7 @@ export function useWizard() {
 
     setState((prev) => ({ ...prev, user_type: userType }));
     setCurrentStep('moisture_known');
+    setStepIndex(1);
     addMessage('assistant', 'Do you know the moisture content?', ['Yes', 'No']);
   };
 
@@ -201,10 +235,12 @@ export function useWizard() {
 
     if (knowsMoisture) {
       setCurrentStep('moisture_value');
+      setStepIndex(2);
       addMessage('assistant', 'Enter moisture content (value between 0 and 1):');
     } else {
       setState((prev) => ({ ...prev, moisture: 0.3 }));
       setCurrentStep('category');
+      setStepIndex(2);
       addMessage('assistant', 'Select material category:', [
         'agricultural',
         'biomass',
@@ -223,6 +259,7 @@ export function useWizard() {
 
     setState((prev) => ({ ...prev, moisture }));
     setCurrentStep('category');
+    setStepIndex(3);
     addMessage('assistant', 'Select material category:', ['agricultural', 'biomass', 'plastic', 'mixed']);
   };
 
@@ -235,16 +272,19 @@ export function useWizard() {
 
     setState((prev) => ({ ...prev, category }));
     setCurrentStep('material');
+    setStepIndex(3);
     addMessage('assistant', 'Select material:', ['Rice Straw', 'Date Palm Seeds', 'Other']);
   };
 
   const handleMaterial = (input: string) => {
     if (input.toLowerCase() === 'other') {
       setCurrentStep('material_custom');
+      setStepIndex(4);
       addMessage('assistant', 'Enter custom material name:');
     } else {
       setState((prev) => ({ ...prev, material_name: input }));
       setCurrentStep('mass');
+      setStepIndex(4);
       addMessage('assistant', 'Enter sample mass (grams):');
     }
   };
@@ -252,6 +292,7 @@ export function useWizard() {
   const handleMaterialCustom = (input: string) => {
     setState((prev) => ({ ...prev, material_name: input }));
     setCurrentStep('mass');
+    setStepIndex(5);
     addMessage('assistant', 'Enter sample mass (grams):');
   };
 
@@ -264,6 +305,7 @@ export function useWizard() {
 
     setState((prev) => ({ ...prev, mass }));
     setCurrentStep('processing_goal');
+    setStepIndex(5);
     addMessage('assistant', 'Select processing target:', [
       'raw_biochar',
       'activated_carbon',
@@ -280,6 +322,7 @@ export function useWizard() {
 
     setState((prev) => ({ ...prev, processing_goal: goal }));
     setCurrentStep('optimization_goal');
+    setStepIndex(6);
     addMessage('assistant', 'Select optimization objective:', ['max_co2', 'balanced', 'max_stability']);
   };
 
@@ -294,9 +337,11 @@ export function useWizard() {
 
     if (state.processing_goal === 'activated_carbon' || state.processing_goal === 'composite_filter') {
       setCurrentStep('activation_method');
+      setStepIndex(7);
       addMessage('assistant', 'Select activation method:', ['chemical', 'physical']);
     } else {
       setCurrentStep('num_trials');
+      setStepIndex(9);
       addMessage('assistant', 'Enter number of virtual experiments (num_trials):');
     }
   };
@@ -312,13 +357,16 @@ export function useWizard() {
 
     if (method === 'chemical') {
       setCurrentStep('activation_agent');
+      setStepIndex(8);
       addMessage('assistant', 'Select activation agent:', ['HCl', 'KOH', 'H3PO4']);
     } else {
       if (state.processing_goal === 'composite_filter') {
         setCurrentStep('composite_strategy');
+        setStepIndex(8);
         addMessage('assistant', 'Select composite strategy:', ['manual', 'auto']);
       } else {
         setCurrentStep('num_trials');
+        setStepIndex(9);
         addMessage('assistant', 'Enter number of virtual experiments (num_trials):');
       }
     }
@@ -337,6 +385,7 @@ export function useWizard() {
     }));
 
     setCurrentStep('concentration_known');
+    setStepIndex(8);
     addMessage('assistant', 'Do you know the concentration?', ['Yes', 'No']);
   };
 
@@ -345,6 +394,7 @@ export function useWizard() {
 
     if (knowsConcentration) {
       setCurrentStep('concentration_value');
+      setStepIndex(8);
       addMessage('assistant', 'Enter concentration value:');
     } else {
       setState((prev) => ({
@@ -354,9 +404,11 @@ export function useWizard() {
 
       if (state.processing_goal === 'composite_filter') {
         setCurrentStep('composite_strategy');
+        setStepIndex(9);
         addMessage('assistant', 'Select composite strategy:', ['manual', 'auto']);
       } else {
         setCurrentStep('num_trials');
+        setStepIndex(9);
         addMessage('assistant', 'Enter number of virtual experiments (num_trials):');
       }
     }
@@ -376,9 +428,11 @@ export function useWizard() {
 
     if (state.processing_goal === 'composite_filter') {
       setCurrentStep('composite_strategy');
+      setStepIndex(9);
       addMessage('assistant', 'Select composite strategy:', ['manual', 'auto']);
     } else {
       setCurrentStep('num_trials');
+      setStepIndex(9);
       addMessage('assistant', 'Enter number of virtual experiments (num_trials):');
     }
   };
@@ -392,6 +446,7 @@ export function useWizard() {
 
     setState((prev) => ({ ...prev, composite: { strategy } }));
     setCurrentStep('num_trials');
+    setStepIndex(9);
     addMessage('assistant', 'Enter number of virtual experiments (num_trials):');
   };
 
@@ -404,6 +459,7 @@ export function useWizard() {
 
     setState((prev) => ({ ...prev, num_trials: numTrials }));
     setCurrentStep('complete');
+    setStepIndex(FIXED_TOTAL_STEPS);
     setIsProcessing(true);
 
     addMessage('assistant', 'Processing your request and generating optimal recipe...');
@@ -689,34 +745,7 @@ export function useWizard() {
     setIsProcessing(false);
     setJobId(null);
     setResultData(null);
-  };
-
-  const getCurrentStepNumber = (): number => {
-    const validSteps = STEP_SEQUENCE.filter((step) => {
-      if (step === 'moisture_value' && !state.knowsMoisture) return false;
-      if (step === 'material_custom' && state.material_name !== 'Other') return false;
-      if (step === 'activation_method' && state.processing_goal === 'raw_biochar') return false;
-      if (step === 'activation_agent' && state.activation?.type !== 'chemical') return false;
-      if (step === 'concentration_known' && state.activation?.type !== 'chemical') return false;
-      if (step === 'concentration_value' && !state.activation) return false;
-      if (step === 'composite_strategy' && state.processing_goal !== 'composite_filter') return false;
-      return true;
-    });
-    return Math.min(validSteps.indexOf(currentStep) + 1, validSteps.length);
-  };
-
-  const getTotalSteps = (): number => {
-    const validSteps = STEP_SEQUENCE.filter((step) => {
-      if (step === 'moisture_value') return state.knowsMoisture;
-      if (step === 'material_custom') return false;
-      if (step === 'activation_method') return state.processing_goal !== 'raw_biochar';
-      if (step === 'activation_agent') return state.activation?.type === 'chemical';
-      if (step === 'concentration_known') return state.activation?.type === 'chemical';
-      if (step === 'concentration_value') return false;
-      if (step === 'composite_strategy') return state.processing_goal === 'composite_filter';
-      return true;
-    });
-    return validSteps.length;
+    setStepIndex(0);
   };
 
   return {
@@ -725,8 +754,8 @@ export function useWizard() {
     isProcessing,
     currentStep,
     resetWizard,
-    currentStepNumber: getCurrentStepNumber(),
-    totalSteps: getTotalSteps(),
+    currentStepNumber: stepIndex,
+    totalSteps: FIXED_TOTAL_STEPS,
     resultData,
   };
 }
