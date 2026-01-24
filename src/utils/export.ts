@@ -113,62 +113,231 @@ export const generateReportText = (result: any): string => {
 };
 
 export const exportToPDF = (result: any, filename: string = 'report.pdf') => {
-  const reportText = generateReportText(result);
+  import('jspdf').then(({ jsPDF }) => {
+    const doc = new jsPDF();
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>${filename}</title>
-      <style>
-        body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          line-height: 1.6;
-          color: #333;
-          max-width: 900px;
-          margin: 0;
-          padding: 40px;
-          background: white;
-        }
-        pre {
-          background: #f5f5f5;
-          padding: 15px;
-          border-radius: 4px;
-          overflow-x: auto;
-          font-size: 12px;
-        }
-        h1 {
-          color: #0066cc;
-          border-bottom: 3px solid #0066cc;
-          padding-bottom: 10px;
-        }
-        @media print {
-          body { padding: 20px; }
-        }
-      </style>
-    </head>
-    <body>
-      <pre>${escapeHtml(reportText)}</pre>
-      <script>
-        window.print();
-      </script>
-    </body>
-    </html>
-  `;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const maxWidth = pageWidth - 2 * margin;
+    let y = 20;
+    const lineHeight = 7;
+    const sectionSpacing = 10;
 
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, '_blank');
-  if (win) {
-    win.onload = () => {
-      win.print();
-    };
-  }
-};
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SCIENTIFIC ANALYSIS REPORT', margin, y);
+    y += lineHeight + 5;
 
-const escapeHtml = (text: string): string => {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += sectionSpacing;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('MATERIAL SPECIFICATION', margin, y);
+    y += lineHeight;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Material: ${result.material?.name || 'N/A'}`, margin, y);
+    y += lineHeight;
+    doc.text(`Category: ${result.material?.category || 'N/A'}`, margin, y);
+    y += lineHeight;
+    doc.text(`Mass: ${result.material?.input_mass_g || 'N/A'} g`, margin, y);
+    y += lineHeight;
+    doc.text(`Moisture Content: ${((result.material?.moisture || 0) * 100).toFixed(1)}%`, margin, y);
+    y += sectionSpacing;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PROCESS DESIGN', margin, y);
+    y += lineHeight;
+
+    if (result.process_plan?.pyrolysis) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Pyrolysis Conditions:', margin, y);
+      y += lineHeight;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const temp = result.process_plan.pyrolysis.temperature_celsius;
+      const duration = result.process_plan.pyrolysis.duration_hours;
+      const heatingRate = result.process_plan.pyrolysis.heating_rate;
+
+      if (temp !== undefined && temp !== null) {
+        doc.text(`  • Temperature: ${temp}°C`, margin + 5, y);
+        y += lineHeight;
+      }
+      if (duration !== undefined && duration !== null) {
+        doc.text(`  • Duration: ${duration} hours`, margin + 5, y);
+        y += lineHeight;
+      }
+      if (heatingRate !== undefined && heatingRate !== null) {
+        doc.text(`  • Heating Rate: ${heatingRate}°C/min`, margin + 5, y);
+        y += lineHeight;
+      }
+    }
+
+    if (result.process_plan?.activation) {
+      y += 3;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Activation Process:', margin, y);
+      y += lineHeight;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const method = result.process_plan.activation.type;
+      const agent = result.process_plan.activation.agent;
+      const concentration = result.process_plan.activation.concentration;
+      const temperature = result.process_plan.activation.temperature;
+      const duration = result.process_plan.activation.duration;
+
+      if (method) {
+        doc.text(`  • Method: ${method}`, margin + 5, y);
+        y += lineHeight;
+      }
+      if (agent) {
+        doc.text(`  • Agent: ${agent}`, margin + 5, y);
+        y += lineHeight;
+      }
+      if (concentration !== undefined && concentration !== null) {
+        doc.text(`  • Concentration: ${concentration}`, margin + 5, y);
+        y += lineHeight;
+      }
+      if (temperature !== undefined && temperature !== null) {
+        doc.text(`  • Temperature: ${temperature}°C`, margin + 5, y);
+        y += lineHeight;
+      }
+      if (duration !== undefined && duration !== null) {
+        doc.text(`  • Duration: ${duration} minutes`, margin + 5, y);
+        y += lineHeight;
+      }
+    }
+
+    if (result.process_plan?.composite) {
+      y += 3;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Composite Configuration:', margin, y);
+      y += lineHeight;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`  • Strategy: ${result.process_plan.composite.strategy}`, margin + 5, y);
+      y += lineHeight;
+      if (result.process_plan.composite.matrix) {
+        doc.text(`  • Matrix: ${result.process_plan.composite.matrix}`, margin + 5, y);
+        y += lineHeight;
+      }
+      if (result.process_plan.composite.ratio) {
+        doc.text(`  • Ratio: ${result.process_plan.composite.ratio}`, margin + 5, y);
+        y += lineHeight;
+      }
+    }
+
+    y += sectionSpacing;
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PREDICTED PERFORMANCE', margin, y);
+    y += lineHeight;
+
+    if (result.predicted_performance) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const co2Score = result.predicted_performance.co2_adsorption_score;
+      const confidence = result.predicted_performance.confidence;
+
+      if (co2Score !== undefined && co2Score !== null) {
+        doc.text(`CO₂ Adsorption Score: ${co2Score.toFixed(2)}`, margin, y);
+        y += lineHeight;
+        const descText = 'This represents the predicted CO₂ adsorption capacity of the optimized material.';
+        const splitDesc = doc.splitTextToSize(descText, maxWidth - 10);
+        doc.text(splitDesc, margin + 5, y);
+        y += lineHeight * splitDesc.length + 3;
+      }
+      if (confidence !== undefined && confidence !== null) {
+        doc.text(`Model Confidence: ${(confidence * 100).toFixed(1)}%`, margin, y);
+        y += lineHeight;
+        const confText = 'This reflects the statistical reliability of the predictions based on training data.';
+        const splitConf = doc.splitTextToSize(confText, maxWidth - 10);
+        doc.text(splitConf, margin + 5, y);
+        y += lineHeight * splitConf.length;
+      }
+    }
+
+    y += sectionSpacing;
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RISK ASSESSMENT', margin, y);
+    y += lineHeight;
+
+    if (result.risk_assessment) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const overallRisk = result.risk_assessment.overall_risk;
+      if (overallRisk) {
+        doc.text(`Overall Risk Level: ${overallRisk}`, margin, y);
+        y += lineHeight + 3;
+      }
+      if (result.risk_assessment.recommendation) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Recommendation:', margin, y);
+        y += lineHeight;
+        doc.setFont('helvetica', 'normal');
+        const splitRec = doc.splitTextToSize(result.risk_assessment.recommendation, maxWidth - 5);
+        doc.text(splitRec, margin, y);
+        y += lineHeight * splitRec.length;
+      }
+    }
+
+    y += sectionSpacing;
+    if (y > 240) {
+      doc.addPage();
+      y = 20;
+    }
+
+    if (result.scientific_explanation) {
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SCIENTIFIC RATIONALE', margin, y);
+      y += lineHeight;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const splitExp = doc.splitTextToSize(result.scientific_explanation, maxWidth - 5);
+      doc.text(splitExp, margin, y);
+      y += lineHeight * splitExp.length + sectionSpacing;
+    }
+
+    if (y > 260) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 5;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    const footer1 = 'This recipe has been optimized using quantum-inspired algorithms';
+    const footer2 = 'and validated against experimental databases.';
+    doc.text(footer1, margin, y);
+    y += lineHeight;
+    doc.text(footer2, margin, y);
+
+    doc.save(filename);
+  });
 };
