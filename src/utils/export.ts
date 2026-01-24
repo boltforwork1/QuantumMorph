@@ -71,11 +71,20 @@ export const generateReportText = (result: any): string => {
   lines.push('─'.repeat(50));
   if (result.predicted_performance) {
     const co2Score = result.predicted_performance.co2_adsorption_score;
+    const stabilityScore = result.predicted_performance.stability_score;
     const confidence = result.predicted_performance.confidence;
 
     if (co2Score !== undefined && co2Score !== null) {
       lines.push(`CO₂ Adsorption Score: ${co2Score.toFixed(2)}`);
       lines.push(`  This represents the predicted CO₂ adsorption capacity of the optimized material.`);
+      lines.push('');
+    }
+    if (stabilityScore !== undefined && stabilityScore !== null) {
+      lines.push(`Structural Stability Score: ${stabilityScore.toFixed(2)}`);
+      lines.push(`  This represents the predicted mechanical stability of the optimized material.`);
+      lines.push('');
+    } else {
+      lines.push('Structural Stability Score: Not available');
       lines.push('');
     }
     if (confidence !== undefined && confidence !== null) {
@@ -252,6 +261,7 @@ export const exportToPDF = (result: any, filename: string = 'report.pdf') => {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       const co2Score = result.predicted_performance.co2_adsorption_score;
+      const stabilityScore = result.predicted_performance.stability_score;
       const confidence = result.predicted_performance.confidence;
 
       if (co2Score !== undefined && co2Score !== null) {
@@ -261,6 +271,17 @@ export const exportToPDF = (result: any, filename: string = 'report.pdf') => {
         const splitDesc = doc.splitTextToSize(descText, maxWidth - 10);
         doc.text(splitDesc, margin + 5, y);
         y += lineHeight * splitDesc.length + 3;
+      }
+      if (stabilityScore !== undefined && stabilityScore !== null) {
+        doc.text(`Structural Stability Score: ${stabilityScore.toFixed(2)}`, margin, y);
+        y += lineHeight;
+        const stabilityText = 'This represents the predicted mechanical stability of the optimized material.';
+        const splitStability = doc.splitTextToSize(stabilityText, maxWidth - 10);
+        doc.text(splitStability, margin + 5, y);
+        y += lineHeight * splitStability.length + 3;
+      } else {
+        doc.text('Structural Stability Score: Not available', margin, y);
+        y += lineHeight + 3;
       }
       if (confidence !== undefined && confidence !== null) {
         doc.text(`Model Confidence: ${(confidence * 100).toFixed(1)}%`, margin, y);

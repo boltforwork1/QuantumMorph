@@ -731,11 +731,20 @@ export function useWizard() {
     lines.push('─'.repeat(50));
     if (result.predicted_performance) {
       const co2Score = result.predicted_performance.co2_adsorption_score;
+      const stabilityScore = result.predicted_performance.stability_score;
       const confidence = result.predicted_performance.confidence;
 
       if (co2Score !== undefined && co2Score !== null) {
         lines.push(`CO2 Adsorption Score: ${co2Score.toFixed(2)}`);
         lines.push(`  This represents the predicted CO2 adsorption capacity of the optimized material.`);
+        lines.push('');
+      }
+      if (stabilityScore !== undefined && stabilityScore !== null) {
+        lines.push(`Structural Stability Score: ${stabilityScore.toFixed(2)}`);
+        lines.push(`  This represents the predicted mechanical stability of the optimized material.`);
+        lines.push('');
+      } else {
+        lines.push('Structural Stability Score: Not available');
         lines.push('');
       }
       if (confidence !== undefined && confidence !== null) {
