@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Message, WizardState } from '../types';
 
 type Step =
@@ -31,6 +31,52 @@ export function useWizard() {
   const [state, setState] = useState<WizardState>({});
   const [currentStep, setCurrentStep] = useState<Step>('user_type');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    const savedState = localStorage.getItem('wizard_state');
+    const savedStep = localStorage.getItem('wizard_step') as Step | null;
+    const savedJobId = localStorage.getItem('wizard_job_id');
+
+    if (savedState) {
+      try {
+        const parsedState = JSON.parse(savedState);
+        setState(parsedState);
+        if (savedStep) setCurrentStep(savedStep);
+        if (savedJobId) {
+          setJobId(savedJobId);
+          setIsProcessing(true);
+        }
+      } catch (error) {
+        console.error('Failed to restore state from localStorage:', error);
+      }
+    }
+    setIsInitialized(true);
+  }, []);
+
+  useEffect(() => {
+    if (isInitialized && jobId && isProcessing) {
+      resumePolling(jobId);
+    }
+  }, [isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized && currentStep !== 'user_type') {
+      saveStateToLocalStorage(state, currentStep);
+    }
+  }, [state, currentStep, isInitialized, saveStateToLocalStorage]);
+
+  const saveStateToLocalStorage = useCallback((newState: WizardState, newStep: Step) => {
+    localStorage.setItem('wizard_state', JSON.stringify(newState));
+    localStorage.setItem('wizard_step', newStep);
+  }, []);
+
+  const clearLocalStorage = useCallback(() => {
+    localStorage.removeItem('wizard_state');
+    localStorage.removeItem('wizard_step');
+    localStorage.removeItem('wizard_job_id');
+  }, []);
 
   const addMessage = useCallback((role: 'assistant' | 'user', content: string, options?: string[], isResult?: boolean) => {
     const newMessage: Message = {
@@ -339,6 +385,67 @@ export function useWizard() {
     await submitToAPI(finalState);
   };
 
+  const pollJobStatus = async (jobIdParam: string, baseUrl: string): Promise<void> => {
+    const statusUrl = `${baseUrl}/status/${jobIdParam}`;
+    let isComplete = false;
+    let maxAttempts = 120;
+    let attempt = 0;
+
+    while (!isComplete && attempt < maxAttempts) {
+      attempt++;
+      console.log(`Status check attempt ${attempt}/${maxAttempts}`);
+
+      try {
+        const statusResponse = await fetch(statusUrl);
+
+        if (!statusResponse.ok) {
+          console.error('Status check failed:', statusResponse.status);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          continue;
+        }
+
+        const statusData = await statusResponse.json();
+        console.log('Status response:', statusData);
+
+        if (statusData.status === 'done' && statusData.result) {
+          console.log('Job complete, displaying results');
+          displayResults(statusData.result);
+          setIsProcessing(false);
+          setJobId(null);
+          localStorage.removeItem('wizard_job_id');
+          clearLocalStorage();
+          isComplete = true;
+          return;
+        }
+
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      } catch (error) {
+        console.error('Error checking status:', error);
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      }
+    }
+
+    throw new Error('Job processing timeout after 10 minutes');
+  };
+
+  const resumePolling = async (jobIdParam: string) => {
+    const baseUrl = 'https://quantummorph-production-05bf.up.railway.app';
+    try {
+      await pollJobStatus(jobIdParam, baseUrl);
+    } catch (error) {
+      console.error('Error resuming polling:', error);
+      addMessage(
+        'assistant',
+        `Error resuming job status. Please refresh the page or start a new session.`
+      );
+      setIsProcessing(false);
+    }
+  };
+
   const validatePayload = (payload: any): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
 
@@ -410,51 +517,13 @@ export function useWizard() {
       }
 
       const jobData = await optimizeResponse.json();
-      const jobId = jobData.job_id;
+      const newJobId = jobData.job_id;
 
-      console.log('Job ID received:', jobId);
+      console.log('Job ID received:', newJobId);
+      setJobId(newJobId);
+      localStorage.setItem('wizard_job_id', newJobId);
 
-      const statusUrl = `${baseUrl}/status/${jobId}`;
-      let isComplete = false;
-      let maxAttempts = 120;
-      let attempt = 0;
-
-      while (!isComplete && attempt < maxAttempts) {
-        attempt++;
-        console.log(`Status check attempt ${attempt}/${maxAttempts}`);
-
-        try {
-          const statusResponse = await fetch(statusUrl);
-
-          if (!statusResponse.ok) {
-            console.error('Status check failed:', statusResponse.status);
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            continue;
-          }
-
-          const statusData = await statusResponse.json();
-          console.log('Status response:', statusData);
-
-          if (statusData.status === 'done' && statusData.result) {
-            console.log('Job complete, displaying results');
-            displayResults(statusData.result);
-            setIsProcessing(false);
-            isComplete = true;
-            return;
-          }
-
-          if (attempt < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-          }
-        } catch (error) {
-          console.error('Error checking status:', error);
-          if (attempt < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-          }
-        }
-      }
-
-      throw new Error('Job processing timeout after 10 minutes');
+      await pollJobStatus(newJobId, baseUrl);
     } catch (error) {
       console.error('=== API REQUEST FAILED ===');
       console.error('Error:', error);
@@ -494,27 +563,29 @@ export function useWizard() {
     lines.push('─'.repeat(50));
     if (result.process_plan?.pyrolysis) {
       lines.push('Pyrolysis Conditions:');
-      lines.push(`  • Temperature: ${result.process_plan.pyrolysis.temperature}°C`);
-      lines.push(`  • Duration: ${result.process_plan.pyrolysis.duration} minutes`);
-      lines.push(`  • Heating Rate: ${result.process_plan.pyrolysis.heating_rate}°C/min`);
+      const temp = result.process_plan.pyrolysis.temperature_celsius;
+      const duration = result.process_plan.pyrolysis.duration_hours;
+      const heatingRate = result.process_plan.pyrolysis.heating_rate;
+
+      if (temp !== undefined && temp !== null) lines.push(`  • Temperature: ${temp}°C`);
+      if (duration !== undefined && duration !== null) lines.push(`  • Duration: ${duration} hours`);
+      if (heatingRate !== undefined && heatingRate !== null) lines.push(`  • Heating Rate: ${heatingRate}°C/min`);
       lines.push('');
     }
 
     if (result.process_plan?.activation) {
       lines.push('Activation Process:');
-      lines.push(`  • Method: ${result.process_plan.activation.method}`);
-      if (result.process_plan.activation.agent) {
-        lines.push(`  • Agent: ${result.process_plan.activation.agent}`);
-      }
-      if (result.process_plan.activation.concentration) {
-        lines.push(`  • Concentration: ${result.process_plan.activation.concentration}`);
-      }
-      if (result.process_plan.activation.temperature) {
-        lines.push(`  • Temperature: ${result.process_plan.activation.temperature}°C`);
-      }
-      if (result.process_plan.activation.duration) {
-        lines.push(`  • Duration: ${result.process_plan.activation.duration} minutes`);
-      }
+      const method = result.process_plan.activation.type;
+      const agent = result.process_plan.activation.agent;
+      const concentration = result.process_plan.activation.concentration;
+      const temperature = result.process_plan.activation.temperature;
+      const duration = result.process_plan.activation.duration;
+
+      if (method) lines.push(`  • Method: ${method}`);
+      if (agent) lines.push(`  • Agent: ${agent}`);
+      if (concentration !== undefined && concentration !== null) lines.push(`  • Concentration: ${concentration}`);
+      if (temperature !== undefined && temperature !== null) lines.push(`  • Temperature: ${temperature}°C`);
+      if (duration !== undefined && duration !== null) lines.push(`  • Duration: ${duration} minutes`);
       lines.push('');
     }
 
@@ -533,26 +604,31 @@ export function useWizard() {
     lines.push('PREDICTED PERFORMANCE');
     lines.push('─'.repeat(50));
     if (result.predicted_performance) {
-      lines.push(`CO₂ Adsorption Capacity: ${result.predicted_performance.co2_adsorption?.toFixed(2) || 'N/A'} mg/g`);
-      lines.push(
-        `  This represents the maximum amount of CO₂ that can be captured per gram of material.`
-      );
-      lines.push('');
-      lines.push(`Stability Score: ${result.predicted_performance.stability_score?.toFixed(2) || 'N/A'}`);
-      lines.push(`  This metric indicates the structural integrity and long-term performance stability.`);
-      lines.push('');
-      lines.push(`Model Confidence: ${((result.predicted_performance.confidence || 0) * 100).toFixed(1)}%`);
-      lines.push(`  This reflects the statistical reliability of the predictions based on training data.`);
-      lines.push('');
+      const co2Score = result.predicted_performance.co2_adsorption_score;
+      const confidence = result.predicted_performance.confidence;
+
+      if (co2Score !== undefined && co2Score !== null) {
+        lines.push(`CO₂ Adsorption Score: ${co2Score.toFixed(2)}`);
+        lines.push(`  This represents the predicted CO₂ adsorption capacity of the optimized material.`);
+        lines.push('');
+      }
+      if (confidence !== undefined && confidence !== null) {
+        lines.push(`Model Confidence: ${(confidence * 100).toFixed(1)}%`);
+        lines.push(`  This reflects the statistical reliability of the predictions based on training data.`);
+        lines.push('');
+      }
     }
 
     lines.push('RISK ASSESSMENT');
     lines.push('─'.repeat(50));
     if (result.risk_assessment) {
-      lines.push(`Technical Risk Level: ${result.risk_assessment.technical_risk || 'N/A'}`);
-      lines.push('');
-      lines.push('Recommendation:');
-      lines.push(result.risk_assessment.recommendation || 'N/A');
+      const overallRisk = result.risk_assessment.overall_risk;
+      if (overallRisk) lines.push(`Overall Risk Level: ${overallRisk}`);
+      if (result.risk_assessment.recommendation) {
+        lines.push('');
+        lines.push('Recommendation:');
+        lines.push(result.risk_assessment.recommendation);
+      }
       lines.push('');
     }
 
@@ -570,10 +646,27 @@ export function useWizard() {
     return lines.join('\n');
   };
 
+  const resetWizard = () => {
+    clearLocalStorage();
+    setMessages([
+      {
+        id: '1',
+        role: 'assistant',
+        content: 'Welcome to Quantum-Morph AI Lab.\n\nWho are you?',
+        options: ['Researcher / Scientist', 'Industrial User (Factory)', 'Student / Learning Mode'],
+      },
+    ]);
+    setState({});
+    setCurrentStep('user_type');
+    setIsProcessing(false);
+    setJobId(null);
+  };
+
   return {
     messages,
     handleUserInput,
     isProcessing,
     currentStep,
+    resetWizard,
   };
 }
