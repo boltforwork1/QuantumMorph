@@ -797,10 +797,15 @@ export function useWizard() {
     const previousEntry = navigationHistory[navigationHistory.length - 1];
     const newHistory = navigationHistory.slice(0, -1);
 
+    let restoredMessages = [...previousEntry.messages];
+    if (restoredMessages.length > 0 && restoredMessages[restoredMessages.length - 1].role === 'user') {
+      restoredMessages = restoredMessages.slice(0, -1);
+    }
+
     setState(previousEntry.state);
     setCurrentStep(previousEntry.step);
     setStepIndex(previousEntry.stepIndex);
-    setMessages(previousEntry.messages);
+    setMessages(restoredMessages);
     setNavigationHistory(newHistory);
     setResultData(null);
   }, [navigationHistory]);
