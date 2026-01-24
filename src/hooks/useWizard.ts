@@ -19,6 +19,24 @@ type Step =
   | 'num_trials'
   | 'complete';
 
+const STEP_SEQUENCE: Step[] = [
+  'user_type',
+  'moisture_known',
+  'moisture_value',
+  'category',
+  'material',
+  'material_custom',
+  'mass',
+  'processing_goal',
+  'optimization_goal',
+  'activation_method',
+  'activation_agent',
+  'concentration_known',
+  'concentration_value',
+  'composite_strategy',
+  'num_trials',
+];
+
 export function useWizard() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -33,6 +51,7 @@ export function useWizard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [resultData, setResultData] = useState<any>(null);
 
   useEffect(() => {
     const savedState = localStorage.getItem('wizard_state');
@@ -546,6 +565,7 @@ export function useWizard() {
   };
 
   const displayResults = (result: any) => {
+    setResultData(result);
     const jsonBlock = '```json\n' + JSON.stringify(result, null, 2) + '\n```';
     addMessage('assistant', jsonBlock, undefined, true);
 
@@ -668,6 +688,35 @@ export function useWizard() {
     setCurrentStep('user_type');
     setIsProcessing(false);
     setJobId(null);
+    setResultData(null);
+  };
+
+  const getCurrentStepNumber = (): number => {
+    const validSteps = STEP_SEQUENCE.filter((step) => {
+      if (step === 'moisture_value' && !state.knowsMoisture) return false;
+      if (step === 'material_custom' && state.material_name !== 'Other') return false;
+      if (step === 'activation_method' && state.processing_goal === 'raw_biochar') return false;
+      if (step === 'activation_agent' && state.activation?.type !== 'chemical') return false;
+      if (step === 'concentration_known' && state.activation?.type !== 'chemical') return false;
+      if (step === 'concentration_value' && !state.activation) return false;
+      if (step === 'composite_strategy' && state.processing_goal !== 'composite_filter') return false;
+      return true;
+    });
+    return Math.min(validSteps.indexOf(currentStep) + 1, validSteps.length);
+  };
+
+  const getTotalSteps = (): number => {
+    const validSteps = STEP_SEQUENCE.filter((step) => {
+      if (step === 'moisture_value') return state.knowsMoisture;
+      if (step === 'material_custom') return false;
+      if (step === 'activation_method') return state.processing_goal !== 'raw_biochar';
+      if (step === 'activation_agent') return state.activation?.type === 'chemical';
+      if (step === 'concentration_known') return state.activation?.type === 'chemical';
+      if (step === 'concentration_value') return false;
+      if (step === 'composite_strategy') return state.processing_goal === 'composite_filter';
+      return true;
+    });
+    return validSteps.length;
   };
 
   return {
@@ -676,5 +725,8 @@ export function useWizard() {
     isProcessing,
     currentStep,
     resetWizard,
+    currentStepNumber: getCurrentStepNumber(),
+    totalSteps: getTotalSteps(),
+    resultData,
   };
 }
