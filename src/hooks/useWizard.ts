@@ -755,41 +755,38 @@ export function useWizard() {
     clearLocalStorage();
 
     const loadedState = experiment.full_input_json;
+    const loadedResult = experiment.full_result_json;
+
     setState(loadedState);
-
-    const summaryLines: string[] = [];
-    summaryLines.push('Loaded previous experiment:');
-    summaryLines.push('');
-    summaryLines.push(`Material: ${loadedState.material_name}`);
-    summaryLines.push(`Category: ${loadedState.category}`);
-    summaryLines.push(`Mass: ${loadedState.mass}g`);
-    summaryLines.push(`Processing Goal: ${loadedState.processing_goal}`);
-    summaryLines.push(`Optimization Goal: ${loadedState.optimization_goal}`);
-    if (experiment.co2_score !== null) {
-      summaryLines.push(`Previous CO₂ Score: ${experiment.co2_score.toFixed(2)}`);
-    }
-    summaryLines.push('');
-    summaryLines.push('You can now modify any parameters and re-run the experiment.');
-
-    setMessages([
-      {
-        id: '1',
-        role: 'assistant',
-        content: 'Welcome to Quantum-Morph AI Lab.\n\nWho are you?',
-        options: ['Researcher / Scientist', 'Industrial User (Factory)', 'Student / Learning Mode'],
-      },
-      {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: summaryLines.join('\n'),
-      },
-    ]);
-
-    setCurrentStep('user_type');
-    setStepIndex(0);
+    setResultData(loadedResult);
+    setCurrentStep('complete');
+    setStepIndex(FIXED_TOTAL_STEPS);
     setIsProcessing(false);
     setJobId(null);
-    setResultData(null);
+
+    const loadNotification: Message = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `Loaded experiment from ${new Date(experiment.timestamp).toLocaleString()}\n\nMaterial: ${loadedState.material_name}\nCategory: ${loadedState.category}\nOptimization: ${loadedState.optimization_goal}`,
+    };
+
+    const jsonBlock = '```json\n' + JSON.stringify(loadedResult, null, 2) + '\n```';
+    const jsonMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: jsonBlock,
+      isResult: true,
+    };
+
+    const explanation = generateExplanation(loadedResult);
+    const explanationMessage: Message = {
+      id: (Date.now() + 2).toString(),
+      role: 'assistant',
+      content: explanation,
+      isResult: true,
+    };
+
+    setMessages([loadNotification, jsonMessage, explanationMessage]);
   }, []);
 
   return {
