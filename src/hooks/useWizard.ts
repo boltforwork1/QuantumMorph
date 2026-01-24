@@ -381,85 +381,80 @@ export function useWizard() {
       return;
     }
 
-    const apiUrl = 'http://127.0.0.1:8000/optimize';
+    const baseUrl = 'https://quantummorph-production-05bf.up.railway.app';
+    const optimizeUrl = `${baseUrl}/optimize`;
     const headers = {
       'Content-Type': 'application/json',
     };
 
     console.log('=== API REQUEST DEBUG ===');
-    console.log('URL:', apiUrl);
+    console.log('URL:', optimizeUrl);
     console.log('Method: POST');
     console.log('Headers:', JSON.stringify(headers, null, 2));
     console.log('Body:', JSON.stringify(requestPayload, null, 2));
     console.log('========================');
 
-    const attemptFetch = async (timeoutMs: number): Promise<Response | null> => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const optimizeResponse = await fetch(optimizeUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestPayload),
+      });
 
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(requestPayload),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        return response;
-      } catch (error) {
-        clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === 'AbortError') {
-          return null;
-        }
-        throw error;
+      console.log('Optimize Response Status:', optimizeResponse.status);
+
+      if (!optimizeResponse.ok) {
+        const errorText = await optimizeResponse.text();
+        console.error('Optimize Response Error:', errorText);
+        throw new Error(`Failed to submit job: ${optimizeResponse.status}`);
       }
-    };
 
-    const pollForResponse = async (maxAttempts = 20): Promise<void> => {
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        console.log(`Polling attempt ${attempt + 1}/${maxAttempts}`);
+      const jobData = await optimizeResponse.json();
+      const jobId = jobData.job_id;
+
+      console.log('Job ID received:', jobId);
+
+      const statusUrl = `${baseUrl}/status/${jobId}`;
+      let isComplete = false;
+      let maxAttempts = 120;
+      let attempt = 0;
+
+      while (!isComplete && attempt < maxAttempts) {
+        attempt++;
+        console.log(`Status check attempt ${attempt}/${maxAttempts}`);
 
         try {
-          const response = await attemptFetch(30000);
+          const statusResponse = await fetch(statusUrl);
 
-          if (response) {
-            console.log('Response Status:', response.status);
-            console.log('Response Status Text:', response.statusText);
+          if (!statusResponse.ok) {
+            console.error('Status check failed:', statusResponse.status);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            continue;
+          }
 
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('Response Error Body:', errorText);
-              throw new Error(`API returned status ${response.status}: ${response.statusText}`);
-            }
+          const statusData = await statusResponse.json();
+          console.log('Status response:', statusData);
 
-            const result = await response.json();
-            console.log('Response Success:', result);
-            displayResults(result);
+          if (statusData.status === 'done' && statusData.result) {
+            console.log('Job complete, displaying results');
+            displayResults(statusData.result);
             setIsProcessing(false);
+            isComplete = true;
             return;
           }
 
-          if (attempt < maxAttempts - 1) {
-            console.log('Request timed out, waiting 5 seconds before retry...');
+          if (attempt < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
         } catch (error) {
-          if (error instanceof Error && error.message.includes('API returned status')) {
-            throw error;
-          }
-          console.error('Request error:', error);
-          if (attempt < maxAttempts - 1) {
-            console.log('Error occurred, waiting 5 seconds before retry...');
+          console.error('Error checking status:', error);
+          if (attempt < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
         }
       }
 
-      throw new Error('Maximum polling attempts reached without successful response');
-    };
-
-    try {
-      await pollForResponse();
+      throw new Error('Job processing timeout after 10 minutes');
     } catch (error) {
       console.error('=== API REQUEST FAILED ===');
       console.error('Error:', error);
@@ -467,7 +462,7 @@ export function useWizard() {
 
       addMessage(
         'assistant',
-        `Server connection failed after multiple attempts.\n\nError Details:\n${error instanceof Error ? error.message : 'Unknown error'}\n\nThe API might be processing your request. Please try again in a moment.`
+        `Server connection failed.\n\nError Details:\n${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again.`
       );
       setIsProcessing(false);
     }
