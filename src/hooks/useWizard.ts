@@ -681,48 +681,122 @@ export function useWizard() {
     lines.push('MATERIAL SPECIFICATION');
     lines.push(`Material: ${result.material?.name || 'N/A'}`);
     lines.push(`Category: ${result.material?.category || 'N/A'}`);
-    lines.push(`Mass: ${result.material?.input_mass_g || 'N/A'} g`);
-    lines.push(`Moisture Content: ${((result.material?.moisture || 0) * 100).toFixed(1)}%`);
+    lines.push(`Input Mass: ${result.material?.input_mass_g !== undefined && result.material?.input_mass_g !== null ? result.material.input_mass_g + ' g' : 'N/A'}`);
+    lines.push(`Moisture Content: ${result.material?.moisture !== undefined && result.material?.moisture !== null ? (result.material.moisture * 100).toFixed(1) + '%' : 'N/A'}`);
     lines.push('');
 
     lines.push('PROCESS DESIGN');
     lines.push('─'.repeat(50));
+
     if (result.process_plan?.pyrolysis) {
       lines.push('Pyrolysis Conditions:');
-      const temp = result.process_plan.pyrolysis.temperature_celsius;
-      const duration = result.process_plan.pyrolysis.duration_hours;
-      const heatingRate = result.process_plan.pyrolysis.heating_rate;
+      const pyro = result.process_plan.pyrolysis;
 
-      if (temp !== undefined && temp !== null) lines.push(`  • Temperature: ${temp}°C`);
-      if (duration !== undefined && duration !== null) lines.push(`  • Duration: ${duration} hours`);
-      if (heatingRate !== undefined && heatingRate !== null) lines.push(`  • Heating Rate: ${heatingRate}°C/min`);
+      if (pyro.temperature_celsius !== undefined && pyro.temperature_celsius !== null) {
+        lines.push(`  • Temperature: ${pyro.temperature_celsius}°C`);
+      }
+      if (pyro.duration_hours !== undefined && pyro.duration_hours !== null) {
+        lines.push(`  • Duration: ${pyro.duration_hours} hours`);
+      }
+      if (pyro.heating_rate !== undefined && pyro.heating_rate !== null) {
+        lines.push(`  • Heating Rate: ${pyro.heating_rate}°C/min`);
+      }
+      if (pyro.atmosphere) {
+        lines.push(`  • Atmosphere: ${pyro.atmosphere}`);
+      }
       lines.push('');
     }
 
     if (result.process_plan?.activation) {
+      const act = result.process_plan.activation;
       lines.push('Activation Process:');
-      const method = result.process_plan.activation.type;
-      const agent = result.process_plan.activation.agent;
-      const concentration = result.process_plan.activation.concentration;
-      const temperature = result.process_plan.activation.temperature;
-      const duration = result.process_plan.activation.duration;
+      lines.push(`  • Status: Enabled`);
 
-      if (method) lines.push(`  • Method: ${method}`);
-      if (agent) lines.push(`  • Agent: ${agent}`);
-      if (concentration !== undefined && concentration !== null) lines.push(`  • Concentration: ${concentration}`);
-      if (temperature !== undefined && temperature !== null) lines.push(`  • Temperature: ${temperature}°C`);
-      if (duration !== undefined && duration !== null) lines.push(`  • Duration: ${duration} minutes`);
+      if (act.type) {
+        lines.push(`  • Method: ${act.type}`);
+      }
+      if (act.agent) {
+        lines.push(`  • Agent: ${act.agent}`);
+      }
+      if (act.concentration !== undefined && act.concentration !== null) {
+        lines.push(`  • Concentration: ${act.concentration}${typeof act.concentration === 'number' ? ' % w/v' : ''}`);
+      }
+      if (act.solution_volume_ml !== undefined && act.solution_volume_ml !== null) {
+        lines.push(`  • Solution Volume: ${act.solution_volume_ml} mL`);
+      }
+      if (act.chemical_mass_g !== undefined && act.chemical_mass_g !== null) {
+        lines.push(`  • Chemical Mass: ${act.chemical_mass_g} g`);
+      }
+      if (act.soaking_time_hours !== undefined && act.soaking_time_hours !== null) {
+        lines.push(`  • Soaking Time: ${act.soaking_time_hours} hours`);
+      }
+      if (act.temperature !== undefined && act.temperature !== null) {
+        lines.push(`  • Activation Temperature: ${act.temperature}°C`);
+      }
+      if (act.duration !== undefined && act.duration !== null) {
+        lines.push(`  • Activation Duration: ${act.duration} minutes`);
+      }
+      lines.push('');
+    } else if (result.process_plan) {
+      lines.push('Activation Process:');
+      lines.push(`  • Status: Disabled`);
+      lines.push('');
+    }
+
+    if (result.process_plan?.washing) {
+      lines.push('Washing Step:');
+      if (result.process_plan.washing.enabled !== undefined) {
+        lines.push(`  • Status: ${result.process_plan.washing.enabled ? 'Enabled' : 'Disabled'}`);
+      }
+      if (result.process_plan.washing.method) {
+        lines.push(`  • Method: ${result.process_plan.washing.method}`);
+      }
+      lines.push('');
+    }
+
+    if (result.process_plan?.drying) {
+      lines.push('Drying Conditions:');
+      const dry = result.process_plan.drying;
+
+      if (dry.temperature_celsius !== undefined && dry.temperature_celsius !== null) {
+        lines.push(`  • Temperature: ${dry.temperature_celsius}°C`);
+      }
+      if (dry.duration_hours !== undefined && dry.duration_hours !== null) {
+        lines.push(`  • Duration: ${dry.duration_hours} hours`);
+      }
       lines.push('');
     }
 
     if (result.process_plan?.composite) {
-      lines.push('Composite Configuration:');
-      lines.push(`  • Strategy: ${result.process_plan.composite.strategy}`);
-      if (result.process_plan.composite.matrix) {
-        lines.push(`  • Matrix: ${result.process_plan.composite.matrix}`);
+      lines.push('Composite Formation:');
+      const comp = result.process_plan.composite;
+
+      if (comp.strategy) {
+        lines.push(`  • Strategy: ${comp.strategy}`);
       }
-      if (result.process_plan.composite.ratio) {
-        lines.push(`  • Ratio: ${result.process_plan.composite.ratio}`);
+      if (comp.biochar_fraction !== undefined && comp.biochar_fraction !== null) {
+        lines.push(`  • Biochar Fraction: ${(comp.biochar_fraction * 100).toFixed(1)}%`);
+      }
+      if (comp.binder_fraction !== undefined && comp.binder_fraction !== null) {
+        lines.push(`  • Binder Fraction: ${(comp.binder_fraction * 100).toFixed(1)}%`);
+      }
+      if (comp.plasticizer_fraction !== undefined && comp.plasticizer_fraction !== null) {
+        lines.push(`  • Plasticizer Fraction: ${(comp.plasticizer_fraction * 100).toFixed(1)}%`);
+      }
+      if (comp.biochar_mass_g !== undefined && comp.biochar_mass_g !== null) {
+        lines.push(`  • Biochar Mass: ${comp.biochar_mass_g} g`);
+      }
+      if (comp.binder_mass_g !== undefined && comp.binder_mass_g !== null) {
+        lines.push(`  • Binder Mass: ${comp.binder_mass_g} g`);
+      }
+      if (comp.plasticizer_mass_g !== undefined && comp.plasticizer_mass_g !== null) {
+        lines.push(`  • Plasticizer Mass: ${comp.plasticizer_mass_g} g`);
+      }
+      if (comp.matrix) {
+        lines.push(`  • Matrix: ${comp.matrix}`);
+      }
+      if (comp.ratio) {
+        lines.push(`  • Ratio: ${comp.ratio}`);
       }
       lines.push('');
     }
@@ -730,39 +804,38 @@ export function useWizard() {
     lines.push('PREDICTED PERFORMANCE');
     lines.push('─'.repeat(50));
     if (result.predicted_performance) {
-      const co2Score = result.predicted_performance.co2_adsorption_score;
-      const stabilityScore = result.predicted_performance.stability_score;
-      const confidence = result.predicted_performance.confidence;
+      const perf = result.predicted_performance;
 
-      if (co2Score !== undefined && co2Score !== null) {
-        lines.push(`CO2 Adsorption Score: ${co2Score.toFixed(2)}`);
-        lines.push(`  This represents the predicted CO2 adsorption capacity of the optimized material.`);
-        lines.push('');
+      if (perf.co2_adsorption_score !== undefined && perf.co2_adsorption_score !== null) {
+        lines.push(`CO₂ Adsorption Score: ${perf.co2_adsorption_score.toFixed(2)}`);
       }
-      if (stabilityScore !== undefined && stabilityScore !== null) {
-        lines.push(`Structural Stability Score: ${stabilityScore.toFixed(2)}`);
-        lines.push(`  This represents the predicted mechanical stability of the optimized material.`);
-        lines.push('');
-      } else {
-        lines.push('Structural Stability Score: Not available');
-        lines.push('');
+      if (perf.stability_score !== undefined && perf.stability_score !== null) {
+        lines.push(`Structural Stability Score: ${perf.stability_score.toFixed(2)}`);
       }
-      if (confidence !== undefined && confidence !== null) {
-        lines.push(`Model Confidence: ${(confidence * 100).toFixed(1)}%`);
-        lines.push(`  This reflects the statistical reliability of the predictions based on training data.`);
-        lines.push('');
+      if (perf.structural_regime) {
+        lines.push(`Structural Regime: ${perf.structural_regime}`);
       }
+      if (perf.confidence !== undefined && perf.confidence !== null) {
+        lines.push(`Model Confidence: ${(perf.confidence * 100).toFixed(1)}%`);
+      }
+      lines.push('');
     }
 
     lines.push('RISK ASSESSMENT');
     lines.push('─'.repeat(50));
     if (result.risk_assessment) {
-      const overallRisk = result.risk_assessment.overall_risk;
-      if (overallRisk) lines.push(`Overall Risk Level: ${overallRisk}`);
-      if (result.risk_assessment.recommendation) {
+      const risk = result.risk_assessment;
+
+      if (risk.overall_risk) {
+        lines.push(`Overall Risk Level: ${risk.overall_risk}`);
+      }
+      if (risk.most_sensitive_step) {
+        lines.push(`Most Sensitive Process Step: ${risk.most_sensitive_step}`);
+      }
+      if (risk.recommendation) {
         lines.push('');
         lines.push('Recommendation:');
-        lines.push(result.risk_assessment.recommendation);
+        lines.push(risk.recommendation);
       }
       lines.push('');
     }
@@ -771,12 +844,22 @@ export function useWizard() {
       lines.push('SCIENTIFIC RATIONALE');
       lines.push('─'.repeat(50));
       lines.push(result.scientific_explanation);
+
+      if (result.predicted_performance?.co2_adsorption_score !== undefined &&
+          result.predicted_performance?.stability_score !== undefined) {
+        lines.push('');
+        lines.push('The optimization algorithm balances the trade-off between CO₂ adsorption capacity and structural stability to achieve the specified objective while maintaining material integrity.');
+      }
       lines.push('');
     }
 
     lines.push('═'.repeat(50));
-    lines.push('This recipe has been optimized using quantum-inspired algorithms');
-    lines.push('and validated against experimental databases.');
+    lines.push('FINAL NOTE');
+    lines.push('─'.repeat(50));
+    lines.push('These results represent model-based predictions generated using quantum-inspired');
+    lines.push('optimization techniques. The process parameters have been optimized based on');
+    lines.push('computational models and should be validated through experimental trials before');
+    lines.push('implementation at scale.');
 
     return lines.join('\n');
   };
