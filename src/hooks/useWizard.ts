@@ -767,38 +767,40 @@ export function useWizard() {
       lines.push('');
     }
 
-    if (result.process_plan?.composite) {
-      lines.push('Composite Formation:');
-      const comp = result.process_plan.composite;
+    if (result.process_plan?.composite_formation?.enabled === true) {
+      lines.push('COMPOSITE FORMATION');
+      lines.push('─'.repeat(50));
 
-      if (comp.strategy) {
-        lines.push(`  • Strategy: ${comp.strategy}`);
+      const fractions = result.process_plan.composite_formation.fractions;
+      const masses = result.process_plan.composite_formation.masses_g;
+
+      if (fractions) {
+        lines.push('Composite Composition:');
+        if (fractions.biochar !== undefined && fractions.biochar !== null) {
+          lines.push(`  • Biochar Fraction: ${(fractions.biochar * 100).toFixed(1)}%`);
+        }
+        if (fractions.binder !== undefined && fractions.binder !== null) {
+          lines.push(`  • Binder Fraction: ${(fractions.binder * 100).toFixed(1)}%`);
+        }
+        if (fractions.plasticizer !== undefined && fractions.plasticizer !== null) {
+          lines.push(`  • Plasticizer Fraction: ${(fractions.plasticizer * 100).toFixed(1)}%`);
+        }
+        lines.push('');
       }
-      if (comp.biochar_fraction !== undefined && comp.biochar_fraction !== null) {
-        lines.push(`  • Biochar Fraction: ${(comp.biochar_fraction * 100).toFixed(1)}%`);
+
+      if (masses) {
+        lines.push('Component Mass Distribution:');
+        if (masses.biochar !== undefined && masses.biochar !== null) {
+          lines.push(`  • Biochar: ${masses.biochar.toFixed(2)} g`);
+        }
+        if (masses.binder !== undefined && masses.binder !== null) {
+          lines.push(`  • Binder: ${masses.binder.toFixed(2)} g`);
+        }
+        if (masses.plasticizer !== undefined && masses.plasticizer !== null) {
+          lines.push(`  • Plasticizer: ${masses.plasticizer.toFixed(2)} g`);
+        }
+        lines.push('');
       }
-      if (comp.binder_fraction !== undefined && comp.binder_fraction !== null) {
-        lines.push(`  • Binder Fraction: ${(comp.binder_fraction * 100).toFixed(1)}%`);
-      }
-      if (comp.plasticizer_fraction !== undefined && comp.plasticizer_fraction !== null) {
-        lines.push(`  • Plasticizer Fraction: ${(comp.plasticizer_fraction * 100).toFixed(1)}%`);
-      }
-      if (comp.biochar_mass_g !== undefined && comp.biochar_mass_g !== null) {
-        lines.push(`  • Biochar Mass: ${comp.biochar_mass_g} g`);
-      }
-      if (comp.binder_mass_g !== undefined && comp.binder_mass_g !== null) {
-        lines.push(`  • Binder Mass: ${comp.binder_mass_g} g`);
-      }
-      if (comp.plasticizer_mass_g !== undefined && comp.plasticizer_mass_g !== null) {
-        lines.push(`  • Plasticizer Mass: ${comp.plasticizer_mass_g} g`);
-      }
-      if (comp.matrix) {
-        lines.push(`  • Matrix: ${comp.matrix}`);
-      }
-      if (comp.ratio) {
-        lines.push(`  • Ratio: ${comp.ratio}`);
-      }
-      lines.push('');
     }
 
     lines.push('PREDICTED PERFORMANCE');

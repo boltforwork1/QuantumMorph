@@ -107,38 +107,40 @@ export const generateReportText = (result: any): string => {
     lines.push('');
   }
 
-  if (result.process_plan?.composite) {
-    lines.push('Composite Formation:');
-    const comp = result.process_plan.composite;
+  if (result.process_plan?.composite_formation?.enabled === true) {
+    lines.push('COMPOSITE FORMATION');
+    lines.push('─'.repeat(50));
 
-    if (comp.strategy) {
-      lines.push(`  • Strategy: ${comp.strategy}`);
+    const fractions = result.process_plan.composite_formation.fractions;
+    const masses = result.process_plan.composite_formation.masses_g;
+
+    if (fractions) {
+      lines.push('Composite Composition:');
+      if (fractions.biochar !== undefined && fractions.biochar !== null) {
+        lines.push(`  • Biochar Fraction: ${(fractions.biochar * 100).toFixed(1)}%`);
+      }
+      if (fractions.binder !== undefined && fractions.binder !== null) {
+        lines.push(`  • Binder Fraction: ${(fractions.binder * 100).toFixed(1)}%`);
+      }
+      if (fractions.plasticizer !== undefined && fractions.plasticizer !== null) {
+        lines.push(`  • Plasticizer Fraction: ${(fractions.plasticizer * 100).toFixed(1)}%`);
+      }
+      lines.push('');
     }
-    if (comp.biochar_fraction !== undefined && comp.biochar_fraction !== null) {
-      lines.push(`  • Biochar Fraction: ${(comp.biochar_fraction * 100).toFixed(1)}%`);
+
+    if (masses) {
+      lines.push('Component Mass Distribution:');
+      if (masses.biochar !== undefined && masses.biochar !== null) {
+        lines.push(`  • Biochar: ${masses.biochar.toFixed(2)} g`);
+      }
+      if (masses.binder !== undefined && masses.binder !== null) {
+        lines.push(`  • Binder: ${masses.binder.toFixed(2)} g`);
+      }
+      if (masses.plasticizer !== undefined && masses.plasticizer !== null) {
+        lines.push(`  • Plasticizer: ${masses.plasticizer.toFixed(2)} g`);
+      }
+      lines.push('');
     }
-    if (comp.binder_fraction !== undefined && comp.binder_fraction !== null) {
-      lines.push(`  • Binder Fraction: ${(comp.binder_fraction * 100).toFixed(1)}%`);
-    }
-    if (comp.plasticizer_fraction !== undefined && comp.plasticizer_fraction !== null) {
-      lines.push(`  • Plasticizer Fraction: ${(comp.plasticizer_fraction * 100).toFixed(1)}%`);
-    }
-    if (comp.biochar_mass_g !== undefined && comp.biochar_mass_g !== null) {
-      lines.push(`  • Biochar Mass: ${comp.biochar_mass_g} g`);
-    }
-    if (comp.binder_mass_g !== undefined && comp.binder_mass_g !== null) {
-      lines.push(`  • Binder Mass: ${comp.binder_mass_g} g`);
-    }
-    if (comp.plasticizer_mass_g !== undefined && comp.plasticizer_mass_g !== null) {
-      lines.push(`  • Plasticizer Mass: ${comp.plasticizer_mass_g} g`);
-    }
-    if (comp.matrix) {
-      lines.push(`  • Matrix: ${comp.matrix}`);
-    }
-    if (comp.ratio) {
-      lines.push(`  • Ratio: ${comp.ratio}`);
-    }
-    lines.push('');
   }
 
   lines.push('PREDICTED PERFORMANCE');
@@ -386,53 +388,66 @@ export const exportToPDF = (result: any, filename: string = 'report.pdf') => {
       }
     }
 
-    if (result.process_plan?.composite) {
+    if (result.process_plan?.composite_formation?.enabled === true) {
       checkPageBreak();
-      y += 3;
-      doc.setFontSize(11);
+      y += sectionSpacing;
+
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Composite Formation:', margin, y);
+      doc.text('COMPOSITE FORMATION', margin, y);
       y += lineHeight;
 
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      const comp = result.process_plan.composite;
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += lineHeight;
 
-      if (comp.strategy) {
-        doc.text(`  • Strategy: ${comp.strategy}`, margin + 5, y);
+      const fractions = result.process_plan.composite_formation.fractions;
+      const masses = result.process_plan.composite_formation.masses_g;
+
+      if (fractions) {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Composite Composition:', margin, y);
         y += lineHeight;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        if (fractions.biochar !== undefined && fractions.biochar !== null) {
+          doc.text(`  • Biochar Fraction: ${(fractions.biochar * 100).toFixed(1)}%`, margin + 5, y);
+          y += lineHeight;
+        }
+        if (fractions.binder !== undefined && fractions.binder !== null) {
+          doc.text(`  • Binder Fraction: ${(fractions.binder * 100).toFixed(1)}%`, margin + 5, y);
+          y += lineHeight;
+        }
+        if (fractions.plasticizer !== undefined && fractions.plasticizer !== null) {
+          doc.text(`  • Plasticizer Fraction: ${(fractions.plasticizer * 100).toFixed(1)}%`, margin + 5, y);
+          y += lineHeight;
+        }
+        y += 3;
       }
-      if (comp.biochar_fraction !== undefined && comp.biochar_fraction !== null) {
-        doc.text(`  • Biochar Fraction: ${(comp.biochar_fraction * 100).toFixed(1)}%`, margin + 5, y);
+
+      if (masses) {
+        checkPageBreak();
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Component Mass Distribution:', margin, y);
         y += lineHeight;
-      }
-      if (comp.binder_fraction !== undefined && comp.binder_fraction !== null) {
-        doc.text(`  • Binder Fraction: ${(comp.binder_fraction * 100).toFixed(1)}%`, margin + 5, y);
-        y += lineHeight;
-      }
-      if (comp.plasticizer_fraction !== undefined && comp.plasticizer_fraction !== null) {
-        doc.text(`  • Plasticizer Fraction: ${(comp.plasticizer_fraction * 100).toFixed(1)}%`, margin + 5, y);
-        y += lineHeight;
-      }
-      if (comp.biochar_mass_g !== undefined && comp.biochar_mass_g !== null) {
-        doc.text(`  • Biochar Mass: ${comp.biochar_mass_g} g`, margin + 5, y);
-        y += lineHeight;
-      }
-      if (comp.binder_mass_g !== undefined && comp.binder_mass_g !== null) {
-        doc.text(`  • Binder Mass: ${comp.binder_mass_g} g`, margin + 5, y);
-        y += lineHeight;
-      }
-      if (comp.plasticizer_mass_g !== undefined && comp.plasticizer_mass_g !== null) {
-        doc.text(`  • Plasticizer Mass: ${comp.plasticizer_mass_g} g`, margin + 5, y);
-        y += lineHeight;
-      }
-      if (comp.matrix) {
-        doc.text(`  • Matrix: ${comp.matrix}`, margin + 5, y);
-        y += lineHeight;
-      }
-      if (comp.ratio) {
-        doc.text(`  • Ratio: ${comp.ratio}`, margin + 5, y);
-        y += lineHeight;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        if (masses.biochar !== undefined && masses.biochar !== null) {
+          doc.text(`  • Biochar: ${masses.biochar.toFixed(2)} g`, margin + 5, y);
+          y += lineHeight;
+        }
+        if (masses.binder !== undefined && masses.binder !== null) {
+          doc.text(`  • Binder: ${masses.binder.toFixed(2)} g`, margin + 5, y);
+          y += lineHeight;
+        }
+        if (masses.plasticizer !== undefined && masses.plasticizer !== null) {
+          doc.text(`  • Plasticizer: ${masses.plasticizer.toFixed(2)} g`, margin + 5, y);
+          y += lineHeight;
+        }
       }
     }
 
