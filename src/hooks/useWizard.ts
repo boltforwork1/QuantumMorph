@@ -736,6 +736,9 @@ export function useWizard() {
       if (act.duration !== undefined && act.duration !== null) {
         lines.push(`  • Activation Duration: ${act.duration} minutes`);
       }
+      if (act.acid_mass_g !== undefined && act.acid_mass_g !== null) {
+        lines.push(`  • Acid Mass: ${act.acid_mass_g} g`);
+      }
       lines.push('');
     } else if (result.process_plan) {
       lines.push('Activation Process:');

@@ -76,6 +76,9 @@ export const generateReportText = (result: any): string => {
     if (act.duration !== undefined && act.duration !== null) {
       lines.push(`  • Activation Duration: ${act.duration} minutes`);
     }
+    if (act.acid_mass_g !== undefined && act.acid_mass_g !== null) {
+      lines.push(`  • Acid Mass: ${act.acid_mass_g} g`);
+    }
     lines.push('');
   } else if (result.process_plan) {
     lines.push('Activation Process:');
@@ -331,6 +334,10 @@ export const exportToPDF = (result: any, filename: string = 'report.pdf') => {
       }
       if (act.duration !== undefined && act.duration !== null) {
         doc.text(`  • Activation Duration: ${act.duration} minutes`, margin + 5, y);
+        y += lineHeight;
+      }
+      if (act.acid_mass_g !== undefined && act.acid_mass_g !== null) {
+        doc.text(`  • Acid Mass: ${act.acid_mass_g} g`, margin + 5, y);
         y += lineHeight;
       }
     } else if (result.process_plan) {
