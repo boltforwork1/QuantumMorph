@@ -35,6 +35,7 @@ export default function AskAIPanel({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,9 +54,9 @@ export default function AskAIPanel({
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    setAskedQuestions((prev) => new Set([...prev, questionToAsk]));
     setInput('');
     setIsLoading(true);
-    setShowSuggestions(false);
 
     setTimeout(() => {
       try {
@@ -137,7 +138,7 @@ export default function AskAIPanel({
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-4">
-            {showSuggestions && messages.length === 1 && (
+            {showSuggestions && (
               <div className="space-y-4 mb-6">
                 <div className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-2`}>
                   <Sparkles size={16} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
@@ -154,10 +155,15 @@ export default function AskAIPanel({
                         <button
                           key={question}
                           onClick={() => handleQuestionClick(question)}
+                          disabled={isLoading}
                           className={`px-3 py-2 rounded-lg text-sm transition-all duration-200 border ${
-                            isDark
-                              ? 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-blue-900/30 hover:border-blue-500'
-                              : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400'
+                            askedQuestions.has(question)
+                              ? isDark
+                                ? 'bg-gray-700 border-gray-600 text-gray-400'
+                                : 'bg-gray-200 border-gray-400 text-gray-500'
+                              : isDark
+                              ? 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-blue-900/30 hover:border-blue-500 disabled:opacity-50'
+                              : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50'
                           }`}
                         >
                           {question}
@@ -203,6 +209,11 @@ export default function AskAIPanel({
                     <span className="text-sm">Analyzing your experiment...</span>
                   </div>
                 </div>
+              </div>
+            )}
+            {!isLoading && messages.length > 1 && (
+              <div className={`mt-6 pt-4 border-t text-xs ${isDark ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'}`}>
+                <p>You can ask another question from the list above or type a new question below.</p>
               </div>
             )}
             <div ref={messagesEndRef} />

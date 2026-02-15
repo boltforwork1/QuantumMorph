@@ -420,6 +420,19 @@ export function useWizard() {
     saveToHistory('activation_agent', newState, 8);
     setState(newState);
 
+    const materialCategory = state.material?.category?.toLowerCase() || '';
+    const isBiomassMaterial =
+      materialCategory.includes('biomass') ||
+      materialCategory.includes('agricultural') ||
+      materialCategory.includes('waste') ||
+      materialCategory.includes('lignocellulosic') ||
+      materialCategory.includes('straw') ||
+      state.material?.name?.toLowerCase().includes('straw');
+
+    if (agent === 'KOH' && isBiomassMaterial) {
+      addMessage('assistant', `Based on experimental studies, KOH activation is strongly recommended for biomass-derived carbons due to its ability to generate high microporosity and enhanced CO₂ adsorption. Your selection aligns with best practices in the field.\n\nProceeding with KOH as the activation agent...`);
+    }
+
     setCurrentStep('concentration_known');
     setStepIndex(8);
     addMessage('assistant', 'Do you know the concentration?', ['Yes', 'No']);
